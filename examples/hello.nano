@@ -1,4 +1,4 @@
-// Hello World in NanoLang for Vib-OS
+// Hello World in NanoLang for ANCORATE AOS
 // Run with: run hello.nano
 // Compile with: nanoc hello.nano -o hello
 
@@ -18,17 +18,17 @@ fn factorial(n: int) -> int {
 
 fn main() {
     print("========================================");
-    print("  Welcome to Vib-OS NanoLang Demo");
+    print("  Welcome to ANCORATE AOS NanoLang Demo");
     print("========================================");
-    
-    let message = greet("Vib-OS User");
+
+    let message = greet("ANCORATE AOS User");
     print(message);
-    
+
     // Factorial demo
     let num = 5;
     let result = factorial(num);
     print("Factorial of 5 = " + result);
-    
+
     print("");
-    print("NanoLang is working on Vib-OS!");
+    print("NanoLang is working on ANCORATE AOS!");
 }

@@ -1,31 +1,16 @@
-# Vib-OS
+# ANCORATE AOS
 
 **Multi-Architecture Operating System with GUI**
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![Platform](https://img.shields.io/badge/platform-ARM64%20%7C%20x86__64-blue)
-![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-M1%20%7C%20M2%20%7C%20M3%20%7C%20M4-orange)
-![Raspberry Pi](https://img.shields.io/badge/Raspberry%20Pi-4%20%7C%205-red)
-![Lines](https://img.shields.io/badge/lines-25k+-yellow)
-![License](https://img.shields.io/badge/license-MIT-green)
-
-```
-        _  _         ___  ____ 
- __   _(_)| |__     / _ \/ ___| 
- \ \ / / || '_ \   | | | \___ \ 
-  \ V /| || |_) |  | |_| |___) |
-   \_/ |_||_.__/    \___/|____/ 
-
-Vib-OS v2.2.0 - Multi-Architecture OS with Full GUI
-```
+ANCORATE AOS is a multi-architecture operating system with a full GUI.
 
 <p align="center">
-  <img src="screenshots/main.png" alt="Vib-OS Desktop" width="800">
+  <img src="screenshots/main.png" alt="ANCORATE AOS Desktop" width="800">
 </p>
 
 ## Overview
 
-Vib-OS is a from-scratch, Unix-like operating system with **full multi-architecture support** for **ARM64** and **x86_64**. It features a custom kernel, a modern macOS-inspired graphical user interface, a full TCP/IP networking stack, and a Virtual File System (VFS). Built with **25,000+ lines** of C and Assembly, it runs natively on QEMU, real hardware (Raspberry Pi 4/5, x86_64 PCs), and Apple Silicon (via UTM).
+ANCORATE AOS is a from-scratch, Unix-like operating system with **full multi-architecture support** for **ARM64** and **x86_64**. It features a custom kernel, a modern macOS-inspired graphical user interface, a full TCP/IP networking stack, and a Virtual File System (VFS). Built with **25,000+ lines** of C and Assembly, it runs natively on QEMU, real hardware (Raspberry Pi 4/5, x86_64 PCs), and Apple Silicon (via UTM).
 
 ## 🎯 Multi-Architecture Support
 
@@ -49,7 +34,7 @@ Vib-OS is a from-scratch, Unix-like operating system with **full multi-architect
 
 ### Main Desktop
 ![Main Desktop](screenshots/main.png)
-*Vib-OS desktop with animated dock, menu bar, and wallpaper system.*
+*ANCORATE AOS desktop with animated dock, menu bar, and wallpaper system.*
 
 ### File Manager
 ![File Manager](screenshots/filemanager.png)
@@ -172,7 +157,7 @@ graph TD
 - **Python Interpreter**: Run Python scripts directly in the terminal
   ```bash
   $ python examples/hello.py
-  Hello, Vib-OS!
+  Hello, ANCORATE AOS!
   
   $ python examples/fibonacci.py
   0, 1, 1, 2, 3, 5, 8, 13, 21, 34
@@ -278,8 +263,8 @@ sudo pacman -S qemu-system-aarch64 qemu-system-x86 aarch64-linux-gnu-gcc make
 
 ```bash
 # Clone the repository
-git clone https://github.com/viralcode/vib-OS.git
-cd vib-OS
+git clone https://github.com/your-org/ancorate-aos.git
+cd ancorate-aos
 
 # Build everything (kernel, drivers, userspace)
 make all
@@ -337,10 +322,10 @@ make image
 
 # Write to SD card (replace diskX with your SD card)
 # macOS
-sudo dd if=image/unixos.img of=/dev/rdiskX bs=4m status=progress
+sudo dd if=image/ancorate-aos.img of=/dev/rdiskX bs=4m status=progress
 
 # Linux
-sudo dd if=image/unixos.img of=/dev/sdX bs=4M status=progress && sync
+sudo dd if=image/ancorate-aos.img of=/dev/sdX bs=4M status=progress && sync
 ```
 
 ### For x86_64 PC
@@ -356,7 +341,7 @@ sudo dd if=image/unixos.img of=/dev/sdX bs=4M status=progress && sync
 ./scripts/create-iso.sh
 
 # Write to USB drive
-sudo dd if=vibos-uefi.img of=/dev/sdX bs=4M status=progress && sync
+sudo dd if=ancorate-aos-x86_64.img of=/dev/sdX bs=4M status=progress && sync
 ```
 
 ## 🧪 Testing
@@ -381,19 +366,19 @@ make -f Makefile.multiarch ARCH=x86_64 qemu
 
 #### Raspberry Pi 4/5
 1. Build image: `make image`
-2. Write to SD card: `sudo dd if=image/unixos.img of=/dev/sdX bs=4M`
+2. Write to SD card: `sudo dd if=image/ancorate-aos.img of=/dev/sdX bs=4M`
 3. Insert SD card and power on
 
 #### x86_64 PC
 1. Create bootable USB: `./scripts/create-uefi-image.sh`
-2. Write to USB: `sudo dd if=vibos-uefi.img of=/dev/sdX bs=4M`
+2. Write to USB: `sudo dd if=ancorate-aos-x86_64.img of=/dev/sdX bs=4M`
 3. Boot from USB (select UEFI boot in BIOS)
 
 ### Apple Silicon (M1/M2/M3/M4)
 
 Use UTM (https://mac.getutm.app/):
 1. Create new ARM64 virtual machine
-2. Use `image/unixos.img` as boot disk
+2. Use `image/ancorate-aos.img` as boot disk
 3. Configure 2GB+ RAM
 4. Start VM
 
@@ -478,8 +463,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Website**: [jijojohn.me](https://jijojohn.me)
 - **GitHub**: [github.com/viralcode](https://github.com/viralcode)
-- **Repository**: [viralcode/vib-OS](https://github.com/viralcode/vib-OS)
-- **Issues**: [Report bugs or request features](https://github.com/viralcode/vib-OS/issues)
+- **Repository**: `ancorate-aos` (update this to your repository URL)
+- **Issues**: Use your repository issue tracker
 
 ---
 

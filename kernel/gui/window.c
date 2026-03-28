@@ -1319,7 +1319,7 @@ static void fm_on_mouse(struct window *win, int x, int y, int buttons) {
           run_cmd[j] = '\0';
           /* Execute the run command */
           term_execute_command(term, run_cmd);
-          term_puts(term, "\n\033[32mvib-os\033[0m:\033[34m~\033[0m$ ");
+          term_puts(term, "\n\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
         }
       }
 
@@ -1818,7 +1818,7 @@ static void draw_window(struct window *win) {
     gui_draw_rect(content_x + 80, content_y + 8, content_w - 96, 24, 0xFFFFFF);
     gui_draw_rect_outline(content_x + 80, content_y + 8, content_w - 96, 24,
                           0xA0A0A0, 1);
-    gui_draw_string(content_x + 88, content_y + 12, "http://vib-os.org",
+    gui_draw_string(content_x + 88, content_y + 12, "http://ancorate-aos.local",
                     0x333333, 0xFFFFFF);
 
     /* Navigation Buttons */
@@ -1832,7 +1832,7 @@ static void draw_window(struct window *win) {
                   0xFFFFFF);
 
     /* Mock Page Content */
-    gui_draw_string(content_x + 20, content_y + 60, "Welcome to VibBrowser",
+    gui_draw_string(content_x + 20, content_y + 60, "Welcome to ANCORATE Browser",
                     0x000000, 0xFFFFFF);
     gui_draw_rect(content_x + 20, content_y + 78, 200, 2,
                   0x007AFF); /* Underline */
@@ -1863,7 +1863,7 @@ static void draw_window(struct window *win) {
   /* Help */
   else if (win->title[0] == 'H' && win->title[1] == 'e') {
     int yy = content_y + 10;
-    gui_draw_string(content_x + 10, yy, "Vib-OS Help", 0x89B4FA, THEME_BG);
+    gui_draw_string(content_x + 10, yy, "ANCORATE AOS Help", 0x89B4FA, THEME_BG);
     yy += 24;
     gui_draw_string(content_x + 10, yy, "Mouse:", 0xF9E2AF, THEME_BG);
     yy += 18;
@@ -1895,7 +1895,7 @@ static void draw_window(struct window *win) {
     yy += 32;
 
     /* OS Name - large and centered */
-    gui_draw_string(center_x - 40, yy, "Vib-OS", 0xFFFFFF, THEME_BG);
+    gui_draw_string(center_x - 56, yy, "ANCORATE AOS", 0xFFFFFF, THEME_BG);
     yy += 24;
 
     /* Version */
@@ -1908,7 +1908,7 @@ static void draw_window(struct window *win) {
     gui_draw_string(content_x + 30, yy, "Architecture:  ARM64", 0xCDD6F4,
                     0x252535);
     yy += 18;
-    gui_draw_string(content_x + 30, yy, "Kernel:        Vib Kernel 0.5",
+    gui_draw_string(content_x + 30, yy, "Kernel:        ANCORATE Kernel 0.5",
                     0xCDD6F4, 0x252535);
     yy += 18;
     gui_draw_string(content_x + 30, yy, "Memory:        252 MB", 0xCDD6F4,
@@ -1919,7 +1919,7 @@ static void draw_window(struct window *win) {
     yy += 28;
 
     /* Copyright */
-    gui_draw_string(content_x + 30, yy, "(c) 2026 Vib-OS Project", 0x6C7086,
+    gui_draw_string(content_x + 30, yy, "(c) 2026 ANCORATE AOS Project", 0x6C7086,
                     THEME_BG);
   }
   /* Settings window */
@@ -2510,8 +2510,8 @@ static void draw_menu_bar(void) {
   /* Apple logo (using @ as placeholder, bold white) */
   gui_draw_string(14, 6, "@", 0xFFFFFF, 0x2D2D35);
 
-  /* Vib-OS name (bold) */
-  gui_draw_string(36, 6, "Vib-OS", 0xFFFFFF, 0x303038);
+  /* ANCORATE name (bold) */
+  gui_draw_string(36, 6, "ANCORATE", 0xFFFFFF, 0x303038);
 
   /* Clock on right - compute from PL031 RTC */
   {
@@ -2586,7 +2586,7 @@ static void draw_menu_bar(void) {
                           0x606070, 1);
 
     /* Menu items */
-    gui_draw_string(dropdown_x + 12, dropdown_y + 10, "About Vib-OS", 0xFFFFFF,
+    gui_draw_string(dropdown_x + 12, dropdown_y + 10, "About ANCORATE AOS", 0xFFFFFF,
                     0x404050);
 
     /* Separator line */
@@ -4043,8 +4043,8 @@ int gui_init(uint32_t *framebuffer, uint32_t width, uint32_t height,
     }
   }
 
-  /* Draw Vib-OS logo text (large, centered) */
-  const char *logo = "Vib-OS";
+  /* Draw ANCORATE AOS logo text (large, centered) */
+  const char *logo = "ANCORATE AOS";
   int logo_x =
       (width - 6 * 16) / 2; /* 6 chars, roughly 16px each for "big" text */
   int logo_y = height / 2 - 60;
@@ -4076,7 +4076,7 @@ int gui_init(uint32_t *framebuffer, uint32_t width, uint32_t height,
   /* Animate loading bar */
   const char *loading_msgs[] = {"Initializing hardware...",
                                 "Loading desktop environment...",
-                                "Starting services...", "Welcome to Vib-OS!"};
+                                "Starting services...", "Welcome to ANCORATE AOS!"};
 
   for (int stage = 0; stage < 4; stage++) {
     /* Update progress bar */

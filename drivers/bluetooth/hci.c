@@ -311,7 +311,7 @@ int bt_init(void *usb_device)
     bt_read_bd_addr();
     
     /* Set local name */
-    bt_set_local_name("Vib-OS");
+    bt_set_local_name("ANCORATE AOS");
     
     adapter.powered = true;
     

@@ -1,4 +1,4 @@
-# Vib-OS Multi-Architecture Makefile
+# ANCORATE AOS Multi-Architecture Makefile
 # Supports: ARM64, x86_64, x86 (BIOS)
 
 # ============================================================================
@@ -146,7 +146,7 @@ KERNEL_OBJECTS += $(patsubst $(KERNEL_DIR)/%.S,$(BUILD_DIR)/kernel/%.o,$(KERNEL_
 DRIVER_OBJECTS := $(patsubst $(DRIVERS_DIR)/%.c,$(BUILD_DIR)/drivers/%.o,$(DRIVER_SOURCES))
 
 ALL_OBJECTS := $(KERNEL_OBJECTS) $(DRIVER_OBJECTS)
-KERNEL_BINARY := $(BUILD_DIR)/kernel/vibos-$(ARCH).elf
+KERNEL_BINARY := $(BUILD_DIR)/kernel/ancorate-aos-$(ARCH).elf
 
 # ============================================================================
 # Main Targets
@@ -156,13 +156,13 @@ KERNEL_BINARY := $(BUILD_DIR)/kernel/vibos-$(ARCH).elf
 
 all: kernel image
 	@echo "=========================================="
-	@echo "Vib-OS $(ARCH) build complete!"
+	@echo "ANCORATE AOS $(ARCH) build complete!"
 	@echo "=========================================="
 	@echo "Kernel: $(KERNEL_BINARY)"
 	@echo "Run 'make qemu' to test in emulator"
 
 help:
-	@echo "Vib-OS Multi-Architecture Build System"
+	@echo "ANCORATE AOS Multi-Architecture Build System"
 	@echo "======================================="
 	@echo ""
 	@echo "Usage: make [ARCH=<arch>] <target>"
@@ -263,24 +263,24 @@ else ifeq ($(ARCH),x86_64)
 else ifeq ($(ARCH),x86)
 	@./scripts/create-bios-image.sh $(BUILD_DIR) $(IMAGE_DIR)
 endif
-	@echo "[IMAGE] Created: $(IMAGE_DIR)/vibos-$(ARCH).img"
+	@echo "[IMAGE] Created: $(IMAGE_DIR)/ancorate-aos-$(ARCH).img"
 
 # ============================================================================
 # QEMU Testing
 # ============================================================================
 
 qemu: image
-	@echo "[QEMU] Starting Vib-OS $(ARCH) in emulator..."
+	@echo "[QEMU] Starting ANCORATE AOS $(ARCH) in emulator..."
 ifeq ($(ARCH),arm64)
 	@$(QEMU) $(QEMU_FLAGS) -kernel $(KERNEL_BINARY)
 else ifeq ($(ARCH),x86_64)
 	@$(QEMU) $(QEMU_FLAGS) -kernel $(KERNEL_BINARY)
 else ifeq ($(ARCH),x86)
-	@$(QEMU) $(QEMU_FLAGS) -drive format=raw,file=$(IMAGE_DIR)/vibos-$(ARCH).img
+	@$(QEMU) $(QEMU_FLAGS) -drive format=raw,file=$(IMAGE_DIR)/ancorate-aos-$(ARCH).img
 endif
 
 qemu-debug: image
-	@echo "[QEMU] Starting Vib-OS $(ARCH) with GDB server on port 1234..."
+	@echo "[QEMU] Starting ANCORATE AOS $(ARCH) with GDB server on port 1234..."
 	@$(QEMU) $(QEMU_FLAGS) -kernel $(KERNEL_BINARY) -s -S
 
 # ============================================================================

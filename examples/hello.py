@@ -1,4 +1,4 @@
-# Hello World in Python for Vib-OS
+# Hello World in Python for ANCORATE AOS
 # Run with: run hello.py
 
 def greet(name):
@@ -6,18 +6,18 @@ def greet(name):
 
 def main():
     print("=" * 40)
-    print("  Welcome to Vib-OS Python Demo")
+    print("  Welcome to ANCORATE AOS Python Demo")
     print("=" * 40)
-    
-    message = greet("Vib-OS User")
+
+    message = greet("ANCORATE AOS User")
     print(message)
-    
+
     # Simple calculation demo
     numbers = [1, 2, 3, 4, 5]
     total = sum(numbers)
     print(f"Sum of {numbers} = {total}")
-    
-    print("\nPython is working on Vib-OS!")
+
+    print("\nPython is working on ANCORATE AOS!")
 
 if __name__ == "__main__":
     main()

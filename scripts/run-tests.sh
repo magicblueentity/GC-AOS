@@ -1,10 +1,10 @@
 #!/bin/bash
-# Run UnixOS tests
+# Run ANCORATE AOS tests
 
 set -e
 
 echo "========================================"
-echo "UnixOS Test Suite"
+echo "ANCORATE AOS Test Suite"
 echo "========================================"
 
 # Colors
@@ -19,7 +19,7 @@ FAILED=0
 run_test() {
     local name="$1"
     local cmd="$2"
-    
+
     echo -n "  Testing $name... "
     if eval "$cmd" > /dev/null 2>&1; then
         echo -e "${GREEN}PASS${NC}"
@@ -51,9 +51,9 @@ echo ""
 echo "Kernel Tests"
 echo "------------"
 
-if [ -f build/kernel/unixos.elf ]; then
-    run_test "Kernel binary exists" "[ -f build/kernel/unixos.elf ]"
-    run_test "Kernel is ARM64" "file build/kernel/unixos.elf | grep -q 'ARM aarch64'"
+if [ -f build/kernel/ancorate-aos.elf ]; then
+    run_test "Kernel binary exists" "[ -f build/kernel/ancorate-aos.elf ]"
+    run_test "Kernel is ARM64" "file build/kernel/ancorate-aos.elf | grep -q 'ARM aarch64'"
 else
     echo -e "  ${YELLOW}Kernel not yet built, skipping...${NC}"
 fi

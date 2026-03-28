@@ -481,7 +481,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term->cursor_x = 0;
     term->cursor_y = 0;
   } else if (str_starts_with(cmd, "help")) {
-    term_puts(term, "\033[1;36mVib-OS Terminal v2.0\033[0m\n");
+    term_puts(term, "\033[1;36mANCORATE AOS Terminal v2.0\033[0m\n");
     term_puts(term, "\033[33mFile Commands:\033[0m\n");
     term_puts(term, "  ls        - List directory contents\n");
     term_puts(term, "  cd <dir>  - Change directory\n");
@@ -592,7 +592,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, cmd + 5);
     term_puts(term, "\n");
   } else if (str_starts_with(cmd, "uname")) {
-    term_puts(term, "Vib-OS 0.5.0 ARM64 aarch64\n");
+    term_puts(term, "ANCORATE AOS 0.5.0 ARM64 aarch64\n");
   } else if (str_starts_with(cmd, "date")) {
     term_puts(term, "Thu Jan 16 21:35:00 EST 2026\n");
   } else if (str_starts_with(cmd, "uptime")) {
@@ -616,7 +616,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, "  \\ V /| || |_) |  | |_| |___) |\n");
     term_puts(term, "   \\_/ |_||_.__/    \\___/|____/ \n");
     term_puts(term, "\033[0m\n");
-    term_puts(term, "\033[33mOS:\033[0m      Vib-OS 0.5.0\n");
+    term_puts(term, "\033[33mOS:\033[0m      ANCORATE AOS 0.5.0\n");
     term_puts(term, "\033[33mHost:\033[0m    QEMU ARM Virtual Machine\n");
     term_puts(term, "\033[33mKernel:\033[0m  0.5.0-arm64\n");
     term_puts(term, "\033[33mUptime:\033[0m  0 mins\n");
@@ -773,7 +773,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
       term_puts(term, "designed for embedded systems.\n");
     } else if (str_starts_with(topic, "cpp") || str_starts_with(topic, "c++")) {
       term_puts(term, "\033[1;36mCPP(1) - C++ Cross-Compilation\033[0m\n\n");
-      term_puts(term, "Cross-compile C++ for Vib-OS using:\n");
+      term_puts(term, "Cross-compile C++ for ANCORATE AOS using:\n");
       term_puts(term, "  aarch64-none-elf-g++ -nostdlib -ffreestanding\n");
     } else {
       term_puts(term, "man: No manual entry for ");
@@ -893,7 +893,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
   } else if (str_starts_with(cmd, "id")) {
     term_puts(term, "uid=0(root) gid=0(root) groups=0(root)\n");
   } else if (str_starts_with(cmd, "hostname")) {
-    term_puts(term, "vib-os\n");
+    term_puts(term, "ancorate-aos\n");
   } else if (str_starts_with(cmd, "head ") || str_starts_with(cmd, "tail ")) {
     term_puts(term, "(file viewing commands coming soon)\n");
   } else if (str_starts_with(cmd, "wc ")) {
@@ -1133,7 +1133,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term,
               "<!DOCTYPE html>\n<html><head><title>Example</title></head>\n");
     term_puts(term,
-              "<body><h1>Hello from Vib-OS Network!</h1></body></html>\n");
+              "<body><h1>Hello from ANCORATE AOS Network!</h1></body></html>\n");
   } else {
     term_puts(term, "\033[31mCommand not found:\033[0m ");
     term_puts(term, cmd);
@@ -1170,7 +1170,7 @@ void term_handle_key(struct terminal *term, int key) {
     }
 
     /* Show new prompt */
-    term_puts(term, "\033[32mvib-os\033[0m:\033[34m~\033[0m$ ");
+    term_puts(term, "\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
 
     term->input_len = 0;
     term->input_pos = 0;
@@ -1240,10 +1240,10 @@ struct terminal *term_create(int x, int y, int cols, int rows) {
   }
 
   /* Print welcome message */
-  term_puts(term, "\033[1;36mVib-OS Terminal v1.0\033[0m\n");
+  term_puts(term, "\033[1;36mANCORATE AOS Terminal v1.0\033[0m\n");
   term_puts(term, "Type '\033[33mhelp\033[0m' for commands, "
                   "'\033[33mneofetch\033[0m' for system info.\n\n");
-  term_puts(term, "\033[32mvib-os\033[0m:\033[34m~\033[0m$ ");
+  term_puts(term, "\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
 
   printk(KERN_INFO "TERM: Created terminal %dx%d\n", cols, rows);
 

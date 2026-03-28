@@ -1,12 +1,12 @@
 #!/bin/bash
-# Create bootable disk image for UnixOS
+# Create bootable disk image for ANCORATE AOS
 # Creates a GPT-partitioned disk image with EFI and root partitions
 
 set -e
 
 BUILD_DIR="${1:-build}"
 IMAGE_DIR="${2:-image}"
-IMAGE_NAME="unixos.img"
+IMAGE_NAME="ancorate-aos.img"
 IMAGE_SIZE="1G"
 
 # Colors
@@ -52,7 +52,7 @@ diskutil partitionDisk "$DISK" GPT \
     2>/dev/null || {
     # Fallback: create simpler structure
     log "Using fallback partition method..."
-    diskutil eraseDisk GPT UnixOS "$DISK"
+    diskutil eraseDisk GPT "ANCORATE AOS" "$DISK"
 }
 
 # Get partition identifiers
@@ -76,31 +76,31 @@ log "EFI mounted at $EFI_MOUNT"
 mkdir -p "$EFI_MOUNT/EFI/BOOT"
 
 # Copy kernel as EFI application (if it exists as EFI stub)
-if [ -f "$BUILD_DIR/kernel/unixos.efi" ]; then
-    cp "$BUILD_DIR/kernel/unixos.efi" "$EFI_MOUNT/EFI/BOOT/BOOTAA64.EFI"
+if [ -f "$BUILD_DIR/kernel/ancorate-aos.efi" ]; then
+    cp "$BUILD_DIR/kernel/ancorate-aos.efi" "$EFI_MOUNT/EFI/BOOT/BOOTAA64.EFI"
     log "Copied kernel EFI stub"
-elif [ -f "$BUILD_DIR/kernel/unixos.elf" ]; then
+elif [ -f "$BUILD_DIR/kernel/ancorate-aos.elf" ]; then
     # Create a simple boot configuration
     log "Creating boot configuration..."
     cat > "$EFI_MOUNT/EFI/BOOT/startup.nsh" << 'EOF'
 @echo -off
-echo UnixOS Boot Loader
+echo ANCORATE AOS Boot Loader
 echo Loading kernel...
 \EFI\BOOT\kernel.elf
 EOF
-    cp "$BUILD_DIR/kernel/unixos.elf" "$EFI_MOUNT/EFI/BOOT/kernel.elf" 2>/dev/null || {
+    cp "$BUILD_DIR/kernel/ancorate-aos.elf" "$EFI_MOUNT/EFI/BOOT/kernel.elf" 2>/dev/null || {
         log "Kernel not yet built, creating placeholder..."
-        echo "UnixOS kernel placeholder" > "$EFI_MOUNT/EFI/BOOT/kernel.txt"
+        echo "ANCORATE AOS kernel placeholder" > "$EFI_MOUNT/EFI/BOOT/kernel.txt"
     }
 else
     log "Kernel not yet built, creating boot structure only..."
-    echo "UnixOS - Kernel not yet built" > "$EFI_MOUNT/EFI/BOOT/README.txt"
+    echo "ANCORATE AOS - Kernel not yet built" > "$EFI_MOUNT/EFI/BOOT/README.txt"
 fi
 
 # Create a simple boot info file
 cat > "$EFI_MOUNT/EFI/BOOT/boot.json" << EOF
 {
-    "name": "UnixOS",
+    "name": "ANCORATE AOS",
     "version": "0.1.0",
     "arch": "arm64",
     "kernel": "kernel.elf",

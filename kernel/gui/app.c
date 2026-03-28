@@ -134,7 +134,7 @@ static void settings_draw(struct application *app) {
   y += 20;
   gui_draw_string(260, y, "About", 0xCDD6F4, 0x1E1E2E);
   y += 30;
-  gui_draw_string(270, y, "Vib-OS v0.3.0", 0x808080, 0x1E1E2E);
+  gui_draw_string(250, y, "ANCORATE AOS v0.3.0", 0x808080, 0x1E1E2E);
   y += 20;
   gui_draw_string(270, y, "ARM64 Operating System", 0x808080, 0x1E1E2E);
 }
@@ -305,7 +305,7 @@ static void help_draw(struct application *app) {
   int base_y = 132;
   int y = base_y;
 
-  gui_draw_string(base_x + 10, y, "Vib-OS Help", 0x89B4FA, 0x1E1E2E);
+  gui_draw_string(base_x + 10, y, "ANCORATE AOS Help", 0x89B4FA, 0x1E1E2E);
   y += 24;
   gui_draw_string(base_x + 10, y, "================", 0x89B4FA, 0x1E1E2E);
   y += 24;
@@ -337,7 +337,7 @@ static void help_draw(struct application *app) {
                   0xCDD6F4, 0x1E1E2E);
   y += 24;
 
-  gui_draw_string(base_x + 10, y, "Copyright 2026 Vib-OS Project", 0x585B70,
+  gui_draw_string(base_x + 10, y, "Copyright 2026 ANCORATE AOS Project", 0x585B70,
                   0x1E1E2E);
 }
 

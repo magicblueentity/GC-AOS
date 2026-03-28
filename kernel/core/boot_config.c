@@ -42,7 +42,7 @@ static struct boot_config boot_cfg = {
     .verbose_boot = false,
     .debug_mode = false,
     .kernel_cmdline = "console=ttyS0 rootwait",
-    .default_kernel = "/boot/vib-os.elf",
+    .default_kernel = "/boot/ancorate-aos.elf",
     .recovery_kernel = "/boot/recovery.elf",
     .splash_bg_color = 0x1A1A2E,   /* Dark blue-gray */
     .splash_fg_color = 0xE94560,   /* Accent pink */
@@ -205,7 +205,7 @@ void boot_init(void)
     }
     
     /* Add default boot entries */
-    boot_add_entry("vib-OS", boot_cfg.default_kernel, boot_cfg.kernel_cmdline);
+    boot_add_entry("ANCORATE AOS", boot_cfg.default_kernel, boot_cfg.kernel_cmdline);
     boot_add_entry("Recovery Mode", boot_cfg.recovery_kernel, "single recovery");
     boot_add_entry("Debug Shell", "/bin/sh", "debug");
     

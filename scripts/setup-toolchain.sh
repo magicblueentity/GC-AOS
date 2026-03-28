@@ -1,11 +1,11 @@
 #!/bin/bash
-# UnixOS Toolchain Setup Script
-# Installs all dependencies required to build UnixOS on macOS
+# ANCORATE AOS Toolchain Setup Script
+# Installs all dependencies required to build ANCORATE AOS on macOS
 
 set -e
 
 echo "========================================"
-echo "UnixOS Toolchain Setup"
+echo "ANCORATE AOS Toolchain Setup"
 echo "========================================"
 echo ""
 

@@ -161,9 +161,9 @@ void fb_show_splash(void)
     int cx = framebuffer.width / 2;
     int cy = framebuffer.height / 2 - 50;
     
-    /* Simple "Vib-OS" text */
+    /* Simple "ANCORATE" text */
     fb_fill_rect(cx - 60, cy - 30, 120, 60, 0x89B4FA);  /* Blue box */
-    fb_draw_string(cx - 28, cy - 4, "Vib-OS", 0xFFFFFF, 0x89B4FA);
+    fb_draw_string(cx - 36, cy - 4, "ANCORATE", 0xFFFFFF, 0x89B4FA);
     
     /* Boot message */
     fb_draw_string(cx - 60, cy + 50, "ARM64 Operating System", 0xCDD6F4, 0x1E1E2E);

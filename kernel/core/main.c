@@ -75,10 +75,10 @@ static void print_banner(void) {
   printk("  \\ V /| || |_) |  | |_| |___) |\n");
   printk("   \\_/ |_||_.__/    \\___/|____/ \n");
   printk("\n");
-  printk("Vib-OS v%d.%d.%d - ARM64 with GUI\n", VIBOS_VERSION_MAJOR,
+  printk("ANCORATE AOS v%d.%d.%d - ARM64 with GUI\n", VIBOS_VERSION_MAJOR,
          VIBOS_VERSION_MINOR, VIBOS_VERSION_PATCH);
-  printk("A Unix-like operating system for ARM64\n");
-  printk("Copyright (c) 2026 Vib-OS Project\n");
+  printk("A modern Unix-like operating system for ARM64\n");
+  printk("Copyright (c) 2026 ANCORATE AOS Project\n");
   printk("\n");
 }
 
@@ -156,8 +156,6 @@ static void init_subsystems(void *dtb) {
 
   /* Initialize Virtual Filesystem */
   printk(KERN_INFO "  Initializing VFS...\n");
-  /* Initialize Virtual Filesystem */
-  printk(KERN_INFO "  Initializing VFS...\n");
   vfs_init();
 
   /* Initialize and Register RamFS */
@@ -186,17 +184,17 @@ static void init_subsystems(void *dtb) {
 
   /* Seed Desktop with sample files and folders */
   ramfs_create_file("/Desktop/notes.txt", 0644,
-                    "Welcome to Vib-OS!\n\nThis is your desktop - right-click "
+                    "Welcome to ANCORATE AOS!\n\nThis is your desktop - right-click "
                     "for options!\n");
   ramfs_create_file("/Desktop/readme.txt", 0644,
-                    "Vib-OS Desktop Manager\n\n- Double-click to open files\n- "
+                    "ANCORATE AOS Desktop Manager\n\n- Double-click to open files\n- "
                     "Right-click for context menu\n");
 
   /* Create a subfolder on Desktop */
   extern int vfs_mkdir(const char *path, mode_t mode);
   vfs_mkdir("/Desktop/Projects", 0755);
   ramfs_create_file("readme.txt", 0644,
-                    "Welcome to Vib-OS!\nThis is a real file in RamFS.");
+                    "Welcome to ANCORATE AOS!\nThis is a real file in RamFS.");
   ramfs_create_file("todo.txt", 0644,
                     "- Implement Browser\n- Fix Bugs\n- Sleep");
   ramfs_create_file_bytes("sample.mp3", 0644, vib_seed_mp3, vib_seed_mp3_len);
@@ -258,13 +256,13 @@ static void init_subsystems(void *dtb) {
 
   /* Python demo files */
   ramfs_create_file("examples/hello.py", 0644,
-                    "# Hello World in Python for Vib-OS\n"
+                    "# Hello World in Python for ANCORATE AOS\n"
                     "# Run with: run hello.py\n\n"
                     "def greet(name):\n"
                     "    return 'Hello, ' + name + '!'\n\n"
                     "def main():\n"
-                    "    print('Welcome to Vib-OS Python Demo')\n"
-                    "    message = greet('Vib-OS User')\n"
+                    "    print('Welcome to ANCORATE AOS Python Demo')\n"
+                    "    message = greet('ANCORATE AOS User')\n"
                     "    print(message)\n\n"
                     "if __name__ == '__main__':\n"
                     "    main()\n");
@@ -289,7 +287,7 @@ static void init_subsystems(void *dtb) {
                     "}\n\n"
                     "fn main() {\n"
                     "    print('Welcome to NanoLang');\n"
-                    "    let msg = greet('Vib-OS');\n"
+                    "    let msg = greet('ANCORATE AOS');\n"
                     "    print(msg);\n"
                     "}\n");
 

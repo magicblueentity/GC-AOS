@@ -1,11 +1,11 @@
 #!/bin/bash
-# Vib-OS Toolchain Setup Script for Linux (Ubuntu/Debian)
-# Installs all dependencies required to build Vib-OS on Linux
+# ANCORATE AOS Toolchain Setup Script for Linux (Ubuntu/Debian)
+# Installs all dependencies required to build ANCORATE AOS on Linux
 
 set -e
 
 echo "========================================"
-echo "Vib-OS Toolchain Setup for Linux"
+echo "ANCORATE AOS Toolchain Setup for Linux"
 echo "========================================"
 echo ""
 

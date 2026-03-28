@@ -1,6 +1,6 @@
-# Building Vib-OS on Ubuntu/Linux
+# Building ANCORATE AOS on Ubuntu/Linux
 
-This guide helps you build Vib-OS on Ubuntu or other Linux distributions.
+This guide helps you build ANCORATE AOS on Ubuntu or other Linux distributions.
 
 ## Quick Start
 
