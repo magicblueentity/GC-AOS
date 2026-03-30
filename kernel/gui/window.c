@@ -1935,7 +1935,7 @@ static void draw_window(struct window *win) {
     gui_draw_string(content_x + 30, yy, "Kernel:        GC Kernel 0.5",
                     0xCDD6F4, 0x252535);
     yy += 18;
-    gui_draw_string(content_x + 30, yy, "Memory:        252 MB", 0xCDD6F4,
+    gui_draw_string(content_x + 30, yy, "Memory:        1024 MB", 0xCDD6F4,
                     0x252535);
     yy += 18;
     gui_draw_string(content_x + 30, yy, "Display:       1920 x 1080", 0xCDD6F4,

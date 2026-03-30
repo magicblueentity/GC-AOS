@@ -16,7 +16,7 @@
 
 /* Initial memory layout - will be updated from DTB/UEFI */
 #define MEMORY_BASE         0x40000000  /* 1GB - typical for ARM64 */
-#define MEMORY_SIZE         (256UL * 1024 * 1024)  /* 256MB - matches QEMU default */
+#define MEMORY_SIZE         (1024UL * 1024 * 1024) /* 1GB - matches current VMM map */
 
 /* ===================================================================== */
 /* Static data */
@@ -36,8 +36,7 @@ static phys_addr_t memory_start;
 static phys_addr_t memory_end;
 
 /* Bitmap for early page tracking before page_array is set up */
-/* Track 64K pages = 256MB - enough for initial boot */
-#define EARLY_BITMAP_SIZE   (64 * 1024 / 8)  /* 8KB bitmap */
+#define EARLY_BITMAP_SIZE   ((MEMORY_SIZE / PAGE_SIZE) / 8)
 static uint8_t early_bitmap[EARLY_BITMAP_SIZE];
 static bool early_mode = true;
 

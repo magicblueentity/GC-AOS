@@ -626,7 +626,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, " 21:35:00 up 0 min,  1 user,  load: 0.00, 0.00, 0.00\n");
   } else if (str_starts_with(cmd, "free")) {
     term_puts(term, "              total        used        free\n");
-    term_puts(term, "Mem:         252 MB       12 MB      240 MB\n");
+    term_puts(term, "Mem:        1024 MB       64 MB      960 MB\n");
     term_puts(term, "Swap:          0 MB        0 MB        0 MB\n");
   } else if (str_starts_with(cmd, "ps")) {
     term_puts(term, "  PID TTY          TIME CMD\n");
@@ -643,7 +643,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, "\033[33mKernel:\033[0m  0.5.0-arm64\n");
     term_puts(term, "\033[33mUptime:\033[0m  0 mins\n");
     term_puts(term, "\033[33mShell:\033[0m   vsh 1.0\n");
-    term_puts(term, "\033[33mMemory:\033[0m  12 MB / 252 MB\n");
+    term_puts(term, "\033[33mMemory:\033[0m  64 MB / 1024 MB\n");
     term_puts(term, "\033[33mCPU:\033[0m     ARM Cortex-A72 (max)\n");
     term_puts(term, "\033[33mGPU:\033[0m     QEMU ramfb 1920x1080\n");
   } else if (str_starts_with(cmd, "exit")) {
