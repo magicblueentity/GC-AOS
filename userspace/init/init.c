@@ -22,7 +22,7 @@
 /* ===================================================================== */
 
 #define INIT_VERSION    "1.0.0"
-#define HOSTNAME        "ancorate-aos"
+#define HOSTNAME        "gc-aos"
 #define SHELL_PATH      "/bin/sh"
 #define CONSOLE_DEV     "/dev/console"
 #define INITTAB_PATH    "/etc/inittab"
@@ -313,7 +313,7 @@ int main(int argc, char *argv[])
     
     /* Print banner */
     printf("\n");
-    printf("  ANCORATE AOS init v%s\n", INIT_VERSION);
+    printf("  GC AOS init v%s\n", INIT_VERSION);
     printf("  =================\n\n");
     
     /* Setup signals */

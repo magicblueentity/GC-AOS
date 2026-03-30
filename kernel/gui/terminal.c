@@ -57,6 +57,9 @@ struct terminal {
   char *chars;
   uint8_t *fg_colors;
   uint8_t *bg_colors;
+  char *prev_chars;
+  uint8_t *prev_fg_colors;
+  uint8_t *prev_bg_colors;
 
   /* Dimensions */
   int cols;
@@ -67,6 +70,10 @@ struct terminal {
   int cursor_y;
   bool cursor_visible;
   bool cursor_blink;
+  int last_cursor_x;
+  int last_cursor_y;
+  bool last_cursor_visible;
+  bool full_refresh;
 
   /* Current colors */
   uint8_t current_fg;
@@ -83,6 +90,7 @@ struct terminal {
   /* Associated window */
   struct window *window;
   int content_x, content_y;
+  int last_content_x, last_content_y;
 
   /* Input buffer */
   char input_buf[256];
@@ -105,6 +113,29 @@ struct terminal {
 
 static struct terminal *active_terminal = NULL;
 
+static void term_copy_cells(char *dst_chars, uint8_t *dst_fg, uint8_t *dst_bg,
+                            const char *src_chars, const uint8_t *src_fg,
+                            const uint8_t *src_bg, int count) {
+  for (int i = 0; i < count; i++) {
+    dst_chars[i] = src_chars[i];
+    dst_fg[i] = src_fg[i];
+    dst_bg[i] = src_bg[i];
+  }
+}
+
+static void term_draw_cell(struct terminal *term, int row, int col) {
+  if (!term || row < 0 || row >= term->rows || col < 0 || col >= term->cols)
+    return;
+
+  int idx = row * term->cols + col;
+  int x = term->content_x + TERM_PADDING + col * TERM_CHAR_W;
+  int y = term->content_y + TERM_PADDING + row * TERM_CHAR_H;
+  uint32_t fg = term_colors[term->fg_colors[idx] & 0xF];
+  uint32_t bg = term_colors[term->bg_colors[idx] & 0xF];
+
+  gui_draw_char(x, y, term->chars[idx], fg, bg);
+}
+
 /* ===================================================================== */
 /* Terminal Buffer Operations */
 /* ===================================================================== */
@@ -120,18 +151,15 @@ static void term_clear_line(struct terminal *term, int row) {
 
 static void term_scroll_up(struct terminal *term) {
   /* Move all lines up by one */
-  for (int row = 0; row < term->rows - 1; row++) {
-    for (int col = 0; col < term->cols; col++) {
-      int src = (row + 1) * term->cols + col;
-      int dst = row * term->cols + col;
-      term->chars[dst] = term->chars[src];
-      term->fg_colors[dst] = term->fg_colors[src];
-      term->bg_colors[dst] = term->bg_colors[src];
-    }
-  }
+  int row_width = term->cols;
+  int move_count = (term->rows - 1) * row_width;
+  term_copy_cells(term->chars, term->fg_colors, term->bg_colors,
+                  term->chars + row_width, term->fg_colors + row_width,
+                  term->bg_colors + row_width, move_count);
 
   /* Clear last line */
   term_clear_line(term, term->rows - 1);
+  term->full_refresh = true;
 }
 
 static void term_newline(struct terminal *term) {
@@ -331,24 +359,34 @@ void term_render(struct terminal *term) {
 
   int base_x = term->content_x + TERM_PADDING;
   int base_y = term->content_y + TERM_PADDING;
+  int cell_count = term->rows * term->cols;
+  bool moved = (term->content_x != term->last_content_x) ||
+               (term->content_y != term->last_content_y);
+  bool full_refresh = term->full_refresh || moved;
 
-  /* Draw background */
-  gui_draw_rect(term->content_x, term->content_y,
-                term->cols * TERM_CHAR_W + TERM_PADDING * 2,
-                term->rows * TERM_CHAR_H + TERM_PADDING * 2, term_colors[0]);
+  if (full_refresh) {
+    gui_draw_rect(term->content_x, term->content_y,
+                  term->cols * TERM_CHAR_W + TERM_PADDING * 2,
+                  term->rows * TERM_CHAR_H + TERM_PADDING * 2, term_colors[0]);
 
-  /* Draw characters */
-  for (int row = 0; row < term->rows; row++) {
-    for (int col = 0; col < term->cols; col++) {
-      int idx = row * term->cols + col;
-      char c = term->chars[idx];
-      uint32_t fg = term_colors[term->fg_colors[idx] & 0xF];
-      uint32_t bg = term_colors[term->bg_colors[idx] & 0xF];
+    for (int row = 0; row < term->rows; row++) {
+      for (int col = 0; col < term->cols; col++) {
+        term_draw_cell(term, row, col);
+      }
+    }
+  } else {
+    if (term->last_cursor_visible) {
+      term_draw_cell(term, term->last_cursor_y, term->last_cursor_x);
+    }
 
-      int x = base_x + col * TERM_CHAR_W;
-      int y = base_y + row * TERM_CHAR_H;
-
-      gui_draw_char(x, y, c, fg, bg);
+    for (int idx = 0; idx < cell_count; idx++) {
+      if (term->chars[idx] != term->prev_chars[idx] ||
+          term->fg_colors[idx] != term->prev_fg_colors[idx] ||
+          term->bg_colors[idx] != term->prev_bg_colors[idx]) {
+        int row = idx / term->cols;
+        int col = idx % term->cols;
+        term_draw_cell(term, row, col);
+      }
     }
   }
 
@@ -358,6 +396,15 @@ void term_render(struct terminal *term) {
     int y = base_y + term->cursor_y * TERM_CHAR_H;
     gui_draw_rect(x, y, TERM_CHAR_W, TERM_CHAR_H, term_colors[7]);
   }
+
+  term_copy_cells(term->prev_chars, term->prev_fg_colors, term->prev_bg_colors,
+                  term->chars, term->fg_colors, term->bg_colors, cell_count);
+  term->last_cursor_x = term->cursor_x;
+  term->last_cursor_y = term->cursor_y;
+  term->last_cursor_visible = term->cursor_visible;
+  term->last_content_x = term->content_x;
+  term->last_content_y = term->content_y;
+  term->full_refresh = false;
 }
 
 /* ===================================================================== */
@@ -481,7 +528,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term->cursor_x = 0;
     term->cursor_y = 0;
   } else if (str_starts_with(cmd, "help")) {
-    term_puts(term, "\033[1;36mANCORATE AOS Terminal v2.0\033[0m\n");
+    term_puts(term, "\033[1;36mGC AOS Terminal v2.0\033[0m\n");
     term_puts(term, "\033[33mFile Commands:\033[0m\n");
     term_puts(term, "  ls        - List directory contents\n");
     term_puts(term, "  cd <dir>  - Change directory\n");
@@ -592,7 +639,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, cmd + 5);
     term_puts(term, "\n");
   } else if (str_starts_with(cmd, "uname")) {
-    term_puts(term, "ANCORATE AOS 0.5.0 ARM64 aarch64\n");
+    term_puts(term, "GC AOS 0.5.0 ARM64 aarch64\n");
   } else if (str_starts_with(cmd, "date")) {
     term_puts(term, "Thu Jan 16 21:35:00 EST 2026\n");
   } else if (str_starts_with(cmd, "uptime")) {
@@ -616,14 +663,14 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, "  \\ V /| || |_) |  | |_| |___) |\n");
     term_puts(term, "   \\_/ |_||_.__/    \\___/|____/ \n");
     term_puts(term, "\033[0m\n");
-    term_puts(term, "\033[33mOS:\033[0m      ANCORATE AOS 0.5.0\n");
+    term_puts(term, "\033[33mOS:\033[0m      GC AOS 0.5.0\n");
     term_puts(term, "\033[33mHost:\033[0m    QEMU ARM Virtual Machine\n");
     term_puts(term, "\033[33mKernel:\033[0m  0.5.0-arm64\n");
     term_puts(term, "\033[33mUptime:\033[0m  0 mins\n");
     term_puts(term, "\033[33mShell:\033[0m   vsh 1.0\n");
     term_puts(term, "\033[33mMemory:\033[0m  12 MB / 252 MB\n");
     term_puts(term, "\033[33mCPU:\033[0m     ARM Cortex-A72 (max)\n");
-    term_puts(term, "\033[33mGPU:\033[0m     QEMU ramfb 1024x768\n");
+    term_puts(term, "\033[33mGPU:\033[0m     QEMU ramfb 1920x1080\n");
   } else if (str_starts_with(cmd, "exit")) {
     term_puts(term, "\033[33mGoodbye!\033[0m\n");
   } else if (str_starts_with(cmd, "play ")) {
@@ -773,7 +820,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
       term_puts(term, "designed for embedded systems.\n");
     } else if (str_starts_with(topic, "cpp") || str_starts_with(topic, "c++")) {
       term_puts(term, "\033[1;36mCPP(1) - C++ Cross-Compilation\033[0m\n\n");
-      term_puts(term, "Cross-compile C++ for ANCORATE AOS using:\n");
+      term_puts(term, "Cross-compile C++ for GC AOS using:\n");
       term_puts(term, "  aarch64-none-elf-g++ -nostdlib -ffreestanding\n");
     } else {
       term_puts(term, "man: No manual entry for ");
@@ -893,7 +940,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
   } else if (str_starts_with(cmd, "id")) {
     term_puts(term, "uid=0(root) gid=0(root) groups=0(root)\n");
   } else if (str_starts_with(cmd, "hostname")) {
-    term_puts(term, "ancorate-aos\n");
+    term_puts(term, "gc-aos\n");
   } else if (str_starts_with(cmd, "head ") || str_starts_with(cmd, "tail ")) {
     term_puts(term, "(file viewing commands coming soon)\n");
   } else if (str_starts_with(cmd, "wc ")) {
@@ -1133,7 +1180,7 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term,
               "<!DOCTYPE html>\n<html><head><title>Example</title></head>\n");
     term_puts(term,
-              "<body><h1>Hello from ANCORATE AOS Network!</h1></body></html>\n");
+              "<body><h1>Hello from GC AOS Network!</h1></body></html>\n");
   } else {
     term_puts(term, "\033[31mCommand not found:\033[0m ");
     term_puts(term, cmd);
@@ -1170,7 +1217,7 @@ void term_handle_key(struct terminal *term, int key) {
     }
 
     /* Show new prompt */
-    term_puts(term, "\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
+    term_puts(term, "\033[32mgc-aos\033[0m:\033[34m~\033[0m$ ");
 
     term->input_len = 0;
     term->input_pos = 0;
@@ -1198,6 +1245,13 @@ struct terminal *term_create(int x, int y, int cols, int rows) {
   if (!term)
     return NULL;
 
+  term->chars = NULL;
+  term->fg_colors = NULL;
+  term->bg_colors = NULL;
+  term->prev_chars = NULL;
+  term->prev_fg_colors = NULL;
+  term->prev_bg_colors = NULL;
+
   term->cols = cols;
   term->rows = rows;
 
@@ -1205,14 +1259,24 @@ struct terminal *term_create(int x, int y, int cols, int rows) {
   term->chars = kmalloc(buf_size);
   term->fg_colors = kmalloc(buf_size);
   term->bg_colors = kmalloc(buf_size);
+  term->prev_chars = kmalloc(buf_size);
+  term->prev_fg_colors = kmalloc(buf_size);
+  term->prev_bg_colors = kmalloc(buf_size);
 
-  if (!term->chars || !term->fg_colors || !term->bg_colors) {
+  if (!term->chars || !term->fg_colors || !term->bg_colors ||
+      !term->prev_chars || !term->prev_fg_colors || !term->prev_bg_colors) {
     if (term->chars)
       kfree(term->chars);
     if (term->fg_colors)
       kfree(term->fg_colors);
     if (term->bg_colors)
       kfree(term->bg_colors);
+    if (term->prev_chars)
+      kfree(term->prev_chars);
+    if (term->prev_fg_colors)
+      kfree(term->prev_fg_colors);
+    if (term->prev_bg_colors)
+      kfree(term->prev_bg_colors);
     kfree(term);
     return NULL;
   }
@@ -1221,14 +1285,26 @@ struct terminal *term_create(int x, int y, int cols, int rows) {
   term->cursor_x = 0;
   term->cursor_y = 0;
   term->cursor_visible = true;
+  term->cursor_blink = false;
+  term->last_cursor_x = 0;
+  term->last_cursor_y = 0;
+  term->last_cursor_visible = false;
+  term->full_refresh = true;
   term->current_fg = 7;
   term->current_bg = 0;
   term->in_escape = false;
   term->escape_len = 0;
+  term->scroll_offset = 0;
+  term->window = NULL;
   term->input_len = 0;
   term->input_pos = 0;
+  term->shell_pid = -1;
+  term->pty_fd = -1;
   term->content_x = x;
   term->content_y = y;
+  term->last_content_x = x;
+  term->last_content_y = y;
+  term->history_count = 0;
 
   /* Init CWD */
   term->cwd[0] = '/';
@@ -1238,12 +1314,14 @@ struct terminal *term_create(int x, int y, int cols, int rows) {
   for (int row = 0; row < rows; row++) {
     term_clear_line(term, row);
   }
+  term_copy_cells(term->prev_chars, term->prev_fg_colors, term->prev_bg_colors,
+                  term->chars, term->fg_colors, term->bg_colors, buf_size);
 
   /* Print welcome message */
-  term_puts(term, "\033[1;36mANCORATE AOS Terminal v1.0\033[0m\n");
+  term_puts(term, "\033[1;36mGC AOS Terminal v1.0\033[0m\n");
   term_puts(term, "Type '\033[33mhelp\033[0m' for commands, "
                   "'\033[33mneofetch\033[0m' for system info.\n\n");
-  term_puts(term, "\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
+  term_puts(term, "\033[32mgc-aos\033[0m:\033[34m~\033[0m$ ");
 
   printk(KERN_INFO "TERM: Created terminal %dx%d\n", cols, rows);
 
@@ -1260,6 +1338,12 @@ void term_destroy(struct terminal *term) {
     kfree(term->fg_colors);
   if (term->bg_colors)
     kfree(term->bg_colors);
+  if (term->prev_chars)
+    kfree(term->prev_chars);
+  if (term->prev_fg_colors)
+    kfree(term->prev_fg_colors);
+  if (term->prev_bg_colors)
+    kfree(term->prev_bg_colors);
   kfree(term);
 }
 
@@ -1284,6 +1368,9 @@ char term_get_input_char(struct terminal *t, int idx) {
 void term_set_content_pos(struct terminal *t, int x, int y) {
   if (!t)
     return;
+  if (t->content_x != x || t->content_y != y) {
+    t->full_refresh = true;
+  }
   t->content_x = x;
   t->content_y = y;
 }

@@ -96,7 +96,7 @@ print_string:
 /* ===================================================================== */
 
 msg_boot:
-    .asciz  "ANCORATE AOS Stage 1\r\n"
+    .asciz  "GC AOS Stage 1\r\n"
 
 msg_stage2:
     .asciz  "Loading Stage 2...\r\n"

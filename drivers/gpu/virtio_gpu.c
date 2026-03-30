@@ -434,8 +434,8 @@ int virtio_gpu_init(pci_device_t *pci) {
          status | VIRTIO_STATUS_DRIVER_OK);
 
   /* Default display size */
-  vgpu_dev.width = 1024;
-  vgpu_dev.height = 768;
+  vgpu_dev.width = 1920;
+  vgpu_dev.height = 1080;
   vgpu_dev.initialized = true;
 
   printk("VGPU: virtio-gpu ready (%dx%d, 3D=%s)\n", vgpu_dev.width,

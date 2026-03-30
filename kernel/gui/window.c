@@ -1,5 +1,5 @@
 /*
- * Vib-OS - GUI Windowing System
+ * GC AOS - GUI Windowing System
  *
  * Complete window manager with compositor and widget toolkit.
  */
@@ -542,9 +542,33 @@ static inline void draw_pixel(int x, int y, uint32_t color) {
 }
 
 void gui_draw_rect(int x, int y, int w, int h, uint32_t color) {
-  for (int row = y; row < y + h; row++) {
-    for (int col = x; col < x + w; col++) {
-      draw_pixel(col, row, color);
+  uint32_t *target = primary_display.backbuffer ? primary_display.backbuffer
+                                                : primary_display.framebuffer;
+  if (!target || w <= 0 || h <= 0)
+    return;
+
+  if (x < 0) {
+    w += x;
+    x = 0;
+  }
+  if (y < 0) {
+    h += y;
+    y = 0;
+  }
+  if (x >= (int)primary_display.width || y >= (int)primary_display.height)
+    return;
+  if (x + w > (int)primary_display.width)
+    w = primary_display.width - x;
+  if (y + h > (int)primary_display.height)
+    h = primary_display.height - y;
+  if (w <= 0 || h <= 0)
+    return;
+
+  int pitch_pixels = primary_display.pitch / 4;
+  for (int row = 0; row < h; row++) {
+    uint32_t *dst = target + (y + row) * pitch_pixels + x;
+    for (int col = 0; col < w; col++) {
+      dst[col] = color;
     }
   }
 }
@@ -1319,7 +1343,7 @@ static void fm_on_mouse(struct window *win, int x, int y, int buttons) {
           run_cmd[j] = '\0';
           /* Execute the run command */
           term_execute_command(term, run_cmd);
-          term_puts(term, "\n\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
+          term_puts(term, "\n\033[32mgc-aos\033[0m:\033[34m~\033[0m$ ");
         }
       }
 
@@ -1818,7 +1842,7 @@ static void draw_window(struct window *win) {
     gui_draw_rect(content_x + 80, content_y + 8, content_w - 96, 24, 0xFFFFFF);
     gui_draw_rect_outline(content_x + 80, content_y + 8, content_w - 96, 24,
                           0xA0A0A0, 1);
-    gui_draw_string(content_x + 88, content_y + 12, "http://ancorate-aos.local",
+    gui_draw_string(content_x + 88, content_y + 12, "http://gc-aos.local",
                     0x333333, 0xFFFFFF);
 
     /* Navigation Buttons */
@@ -1832,7 +1856,7 @@ static void draw_window(struct window *win) {
                   0xFFFFFF);
 
     /* Mock Page Content */
-    gui_draw_string(content_x + 20, content_y + 60, "Welcome to ANCORATE Browser",
+    gui_draw_string(content_x + 20, content_y + 60, "Welcome to GC Browser",
                     0x000000, 0xFFFFFF);
     gui_draw_rect(content_x + 20, content_y + 78, 200, 2,
                   0x007AFF); /* Underline */
@@ -1863,7 +1887,7 @@ static void draw_window(struct window *win) {
   /* Help */
   else if (win->title[0] == 'H' && win->title[1] == 'e') {
     int yy = content_y + 10;
-    gui_draw_string(content_x + 10, yy, "ANCORATE AOS Help", 0x89B4FA, THEME_BG);
+    gui_draw_string(content_x + 10, yy, "GC AOS Help", 0x89B4FA, THEME_BG);
     yy += 24;
     gui_draw_string(content_x + 10, yy, "Mouse:", 0xF9E2AF, THEME_BG);
     yy += 18;
@@ -1895,7 +1919,7 @@ static void draw_window(struct window *win) {
     yy += 32;
 
     /* OS Name - large and centered */
-    gui_draw_string(center_x - 56, yy, "ANCORATE AOS", 0xFFFFFF, THEME_BG);
+    gui_draw_string(center_x - 24, yy, "GC AOS", 0xFFFFFF, THEME_BG);
     yy += 24;
 
     /* Version */
@@ -1908,18 +1932,18 @@ static void draw_window(struct window *win) {
     gui_draw_string(content_x + 30, yy, "Architecture:  ARM64", 0xCDD6F4,
                     0x252535);
     yy += 18;
-    gui_draw_string(content_x + 30, yy, "Kernel:        ANCORATE Kernel 0.5",
+    gui_draw_string(content_x + 30, yy, "Kernel:        GC Kernel 0.5",
                     0xCDD6F4, 0x252535);
     yy += 18;
     gui_draw_string(content_x + 30, yy, "Memory:        252 MB", 0xCDD6F4,
                     0x252535);
     yy += 18;
-    gui_draw_string(content_x + 30, yy, "Display:       1024 x 768", 0xCDD6F4,
+    gui_draw_string(content_x + 30, yy, "Display:       1920 x 1080", 0xCDD6F4,
                     0x252535);
     yy += 28;
 
     /* Copyright */
-    gui_draw_string(content_x + 30, yy, "(c) 2026 ANCORATE AOS Project", 0x6C7086,
+    gui_draw_string(content_x + 30, yy, "(c) 2026 GC AOS Project", 0x6C7086,
                     THEME_BG);
   }
   /* Settings window */
@@ -1934,7 +1958,7 @@ static void draw_window(struct window *win) {
     /* Display section */
     gui_draw_rect(content_x + 10, yy, content_w - 20, 60, 0x252535);
     gui_draw_string(content_x + 20, yy + 8, "Display", 0x89B4FA, 0x252535);
-    gui_draw_string(content_x + 20, yy + 28, "Resolution: 1024 x 768", 0xCDD6F4,
+    gui_draw_string(content_x + 20, yy + 28, "Resolution: 1920 x 1080", 0xCDD6F4,
                     0x252535);
     gui_draw_string(content_x + 20, yy + 44, "Color Depth: 32-bit", 0xCDD6F4,
                     0x252535);
@@ -2510,8 +2534,8 @@ static void draw_menu_bar(void) {
   /* Apple logo (using @ as placeholder, bold white) */
   gui_draw_string(14, 6, "@", 0xFFFFFF, 0x2D2D35);
 
-  /* ANCORATE name (bold) */
-  gui_draw_string(36, 6, "ANCORATE", 0xFFFFFF, 0x303038);
+  /* GC AOS name (bold) */
+  gui_draw_string(36, 6, "GC AOS", 0xFFFFFF, 0x303038);
 
   /* Clock on right - compute from PL031 RTC */
   {
@@ -2586,7 +2610,7 @@ static void draw_menu_bar(void) {
                           0x606070, 1);
 
     /* Menu items */
-    gui_draw_string(dropdown_x + 12, dropdown_y + 10, "About ANCORATE AOS", 0xFFFFFF,
+    gui_draw_string(dropdown_x + 12, dropdown_y + 10, "About GC AOS", 0xFFFFFF,
                     0x404050);
 
     /* Separator line */
@@ -3149,7 +3173,8 @@ static void blit_region(int x, int y, int w, int h) {
   }
 }
 
-/* Forward declaration for cursor */
+/* Forward declaration for cursor overlay */
+static void cursor_erase(void);
 void gui_draw_cursor(void);
 
 void gui_compose(void) {
@@ -3178,11 +3203,10 @@ void gui_compose(void) {
     draw_window(draw_order[i]);
   }
 
-  /* Draw cursor to backbuffer BEFORE blit */
-  gui_draw_cursor();
-
   /* Smart frame buffer update */
   if (primary_display.backbuffer && primary_display.framebuffer) {
+    cursor_erase();
+
     if (g_full_redraw || g_dirty_count == 0) {
       /* Full frame update - use ultra-fast unrolled copy */
       uint64_t *src = (uint64_t *)primary_display.backbuffer;
@@ -3217,6 +3241,8 @@ void gui_compose(void) {
       }
     }
 
+    gui_draw_cursor();
+
     /* Memory barrier */
 #ifdef ARCH_ARM64
     asm volatile("dsb sy" ::: "memory");
@@ -3227,15 +3253,10 @@ void gui_compose(void) {
 
   /* Clear dirty regions for next frame */
   g_dirty_count = 0;
-
-  /* Force full redraw periodically to catch any missed updates */
-  if ((g_frame_count & 0x3F) == 0) { /* Every 64 frames */
-    g_full_redraw = 1;
-  }
 }
 
 /* ===================================================================== */
-/* Mouse Cursor (Mac-style arrow - drawn to backbuffer, no flicker) */
+/* Mouse Cursor (Mac-style arrow framebuffer overlay) */
 /* ===================================================================== */
 
 #define CURSOR_WIDTH 12
@@ -3255,39 +3276,89 @@ static const uint8_t cursor_data[CURSOR_HEIGHT][CURSOR_WIDTH] = {
     {0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0},
 };
 
-/* Draw cursor directly to backbuffer - no save/restore needed since we redraw
- * every frame */
+static uint32_t cursor_saved_pixels[CURSOR_WIDTH * CURSOR_HEIGHT];
+static int cursor_saved_x = 0;
+static int cursor_saved_y = 0;
+static int cursor_saved_valid = 0;
+static struct window *dragging_window;
+static struct window *resizing_window;
+
+static void cursor_erase(void) {
+  if (!cursor_saved_valid || !primary_display.framebuffer)
+    return;
+
+  int pitch = primary_display.pitch / 4;
+  for (int row = 0; row < CURSOR_HEIGHT; row++) {
+    for (int col = 0; col < CURSOR_WIDTH; col++) {
+      int px = cursor_saved_x + col;
+      int py = cursor_saved_y + row;
+      if (px >= 0 && px < (int)primary_display.width && py >= 0 &&
+          py < (int)primary_display.height) {
+        primary_display.framebuffer[py * pitch + px] =
+            cursor_saved_pixels[row * CURSOR_WIDTH + col];
+      }
+    }
+  }
+
+  cursor_saved_valid = 0;
+}
+
 void gui_draw_cursor(void) {
-  extern void mouse_get_position(int *x, int *y);
-  int cx, cy;
-  mouse_get_position(&cx, &cy);
-
-  /* Update global mouse position for event handling */
-  mouse_x = cx;
-  mouse_y = cy;
-
-  /* Draw cursor to backbuffer (not framebuffer!) */
-  uint32_t *target = primary_display.backbuffer;
+  uint32_t *target = primary_display.framebuffer;
   if (!target)
     return;
 
   int pitch = primary_display.pitch / 4;
+  int cx = mouse_x;
+  int cy = mouse_y;
+  cursor_saved_x = cx;
+  cursor_saved_y = cy;
 
   for (int row = 0; row < CURSOR_HEIGHT; row++) {
     for (int col = 0; col < CURSOR_WIDTH; col++) {
-      uint8_t pixel = cursor_data[row][col];
-      if (pixel == 0)
-        continue; /* Transparent */
-
       int px = cx + col;
       int py = cy + row;
       if (px >= 0 && px < (int)primary_display.width && py >= 0 &&
           py < (int)primary_display.height) {
+        int idx = row * CURSOR_WIDTH + col;
+        cursor_saved_pixels[idx] = target[py * pitch + px];
+        uint8_t pixel = cursor_data[row][col];
+        if (pixel == 0)
+          continue;
         uint32_t color = (pixel == 1) ? 0x00000000 : 0x00FFFFFF;
         target[py * pitch + px] = color;
       }
     }
   }
+
+  cursor_saved_valid = 1;
+}
+
+void gui_refresh_cursor(void) {
+  if (!primary_display.framebuffer)
+    return;
+
+  cursor_erase();
+  gui_draw_cursor();
+
+#ifdef ARCH_ARM64
+  asm volatile("dsb sy" ::: "memory");
+#elif defined(ARCH_X86_64) || defined(ARCH_X86)
+  asm volatile("mfence" ::: "memory");
+#endif
+}
+
+int gui_mouse_needs_full_redraw(void) {
+  extern int desktop_is_context_menu_visible(void);
+
+  if (desktop_is_context_menu_visible())
+    return 1;
+  if (dragging_window || resizing_window)
+    return 1;
+  if (mouse_y >= (int)primary_display.height - DOCK_HEIGHT - 40)
+    return 1;
+
+  return 0;
 }
 
 void gui_move_mouse(int dx, int dy) {
@@ -4043,8 +4114,8 @@ int gui_init(uint32_t *framebuffer, uint32_t width, uint32_t height,
     }
   }
 
-  /* Draw ANCORATE AOS logo text (large, centered) */
-  const char *logo = "ANCORATE AOS";
+  /* Draw GC AOS logo text (large, centered) */
+  const char *logo = "GC AOS";
   int logo_x =
       (width - 6 * 16) / 2; /* 6 chars, roughly 16px each for "big" text */
   int logo_y = height / 2 - 60;
@@ -4076,7 +4147,7 @@ int gui_init(uint32_t *framebuffer, uint32_t width, uint32_t height,
   /* Animate loading bar */
   const char *loading_msgs[] = {"Initializing hardware...",
                                 "Loading desktop environment...",
-                                "Starting services...", "Welcome to ANCORATE AOS!"};
+                                "Starting services...", "Welcome to GC AOS!"};
 
   for (int stage = 0; stage < 4; stage++) {
     /* Update progress bar */

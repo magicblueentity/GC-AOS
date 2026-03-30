@@ -1,4 +1,4 @@
-// Hello World in NanoLang for ANCORATE AOS
+// Hello World in NanoLang for GC AOS
 // Run with: run hello.nano
 // Compile with: nanoc hello.nano -o hello
 
@@ -18,10 +18,10 @@ fn factorial(n: int) -> int {
 
 fn main() {
     print("========================================");
-    print("  Welcome to ANCORATE AOS NanoLang Demo");
+    print("  Welcome to GC AOS NanoLang Demo");
     print("========================================");
 
-    let message = greet("ANCORATE AOS User");
+    let message = greet("GC AOS User");
     print(message);
 
     // Factorial demo
@@ -30,5 +30,5 @@ fn main() {
     print("Factorial of 5 = " + result);
 
     print("");
-    print("NanoLang is working on ANCORATE AOS!");
+    print("NanoLang is working on GC AOS!");
 }

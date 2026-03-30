@@ -1,11 +1,11 @@
 #!/bin/bash
-# ANCORATE AOS Toolchain Setup Script for Linux (Ubuntu/Debian)
-# Installs all dependencies required to build ANCORATE AOS on Linux
+# GC AOS Toolchain Setup Script for Linux (Ubuntu/Debian)
+# Installs all dependencies required to build GC AOS on Linux
 
 set -e
 
 echo "========================================"
-echo "ANCORATE AOS Toolchain Setup for Linux"
+echo "GC AOS Toolchain Setup for Linux"
 echo "========================================"
 echo ""
 

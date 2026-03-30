@@ -1,5 +1,5 @@
 /*
- * VibeOS Graphics Library
+ * GC AOS Graphics Library
  *
  * Common drawing primitives for GUI applications.
  * Works with any buffer - desktop backbuffer, window buffers, etc.

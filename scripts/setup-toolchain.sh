@@ -1,11 +1,11 @@
 #!/bin/bash
-# ANCORATE AOS Toolchain Setup Script
-# Installs all dependencies required to build ANCORATE AOS on macOS
+# GC AOS Toolchain Setup Script
+# Installs all dependencies required to build GC AOS on macOS
 
 set -e
 
 echo "========================================"
-echo "ANCORATE AOS Toolchain Setup"
+echo "GC AOS Toolchain Setup"
 echo "========================================"
 echo ""
 

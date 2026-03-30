@@ -1,5 +1,5 @@
 /*
- * VibeOS C Runtime Startup
+ * GC AOS C Runtime Startup
  *
  * Entry point for all userspace programs.
  * Receives: x0=kapi_t*, x1=argc, x2=argv

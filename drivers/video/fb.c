@@ -60,8 +60,8 @@
 
 /* For QEMU virt with ramfb or simple-framebuffer */
 #define SIMPLE_FB_BASE      0x0C000000UL  /* ramfb memory */
-#define SIMPLE_FB_WIDTH     1024
-#define SIMPLE_FB_HEIGHT    768
+#define SIMPLE_FB_WIDTH     1920
+#define SIMPLE_FB_HEIGHT    1080
 #define SIMPLE_FB_BPP       32
 
 static struct {
@@ -161,9 +161,9 @@ void fb_show_splash(void)
     int cx = framebuffer.width / 2;
     int cy = framebuffer.height / 2 - 50;
     
-    /* Simple "ANCORATE" text */
-    fb_fill_rect(cx - 60, cy - 30, 120, 60, 0x89B4FA);  /* Blue box */
-    fb_draw_string(cx - 36, cy - 4, "ANCORATE", 0xFFFFFF, 0x89B4FA);
+    /* Simple "GC AOS" text */
+    fb_fill_rect(cx - 52, cy - 30, 104, 60, 0x89B4FA);  /* Blue box */
+    fb_draw_string(cx - 24, cy - 4, "GC AOS", 0xFFFFFF, 0x89B4FA);
     
     /* Boot message */
     fb_draw_string(cx - 60, cy + 50, "ARM64 Operating System", 0xCDD6F4, 0x1E1E2E);
@@ -189,7 +189,7 @@ int fb_init(void)
     printk(KERN_INFO "FB: Initializing framebuffer\n");
     
     /* Use static buffer in BSS */
-    static uint32_t static_framebuffer[1024 * 768] __attribute__((aligned(4096)));
+    static uint32_t static_framebuffer[1920 * 1080] __attribute__((aligned(4096)));
     
     framebuffer.buffer = static_framebuffer;
     framebuffer.width = SIMPLE_FB_WIDTH;

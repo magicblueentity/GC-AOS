@@ -215,8 +215,8 @@ static const char keycode_to_ascii_shifted[128] = {
 static void (*key_callback)(int key) = 0;
 
 /* Screen dimensions */
-#define SCREEN_WIDTH 1024
-#define SCREEN_HEIGHT 768
+#define SCREEN_WIDTH 1920
+#define SCREEN_HEIGHT 1080
 
 /* ===================================================================== */
 /* MMIO Helpers */
@@ -732,6 +732,9 @@ void input_poll(void) {
   int c = uart_getc_nonblock();
   if (c >= 0 && key_callback) {
     key_callback(c);
+  }
+  if (c >= 0 && gui_key_callback) {
+    gui_key_callback(c);
   }
 
   /* Poll virtio keyboard */

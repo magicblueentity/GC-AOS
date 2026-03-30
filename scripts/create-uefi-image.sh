@@ -6,7 +6,7 @@ set -e
 
 BUILD_DIR="${1:-build/x86_64}"
 IMAGE_DIR="${2:-image}"
-IMAGE_NAME="ancorate-aos-x86_64.img"
+IMAGE_NAME="gc-aos-x86_64.img"
 IMAGE_SIZE="100M"
 
 # Colors
@@ -45,7 +45,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # Create GPT partition table with EFI partition
     diskutil partitionDisk "$DISK" GPT FAT32 EFI 100M 2>/dev/null || {
         log "Using fallback partition method..."
-        diskutil eraseDisk GPT "ANCORATE AOS" "$DISK"
+        diskutil eraseDisk GPT "GC AOS" "$DISK"
     }
 
     # Get EFI partition
@@ -66,12 +66,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     mkdir -p "$EFI_MOUNT/EFI/BOOT"
 
     # Copy kernel as EFI application
-    if [ -f "$BUILD_DIR/kernel/ancorate-aos-x86_64.elf" ]; then
-        cp "$BUILD_DIR/kernel/ancorate-aos-x86_64.elf" "$EFI_MOUNT/EFI/BOOT/BOOTX64.EFI"
+    if [ -f "$BUILD_DIR/kernel/gc-aos-x86_64.elf" ]; then
+        cp "$BUILD_DIR/kernel/gc-aos-x86_64.elf" "$EFI_MOUNT/EFI/BOOT/BOOTX64.EFI"
         log "Copied kernel as BOOTX64.EFI"
     else
         log "Kernel not found, creating placeholder..."
-        echo "ANCORATE AOS x86_64 kernel placeholder" > "$EFI_MOUNT/EFI/BOOT/README.txt"
+        echo "GC AOS x86_64 kernel placeholder" > "$EFI_MOUNT/EFI/BOOT/README.txt"
     fi
 
     # Sync and unmount
@@ -110,12 +110,12 @@ else
     mkdir -p "$EFI_MOUNT/EFI/BOOT"
 
     # Copy kernel as EFI application
-    if [ -f "$BUILD_DIR/kernel/ancorate-aos-x86_64.elf" ]; then
-        cp "$BUILD_DIR/kernel/ancorate-aos-x86_64.elf" "$EFI_MOUNT/EFI/BOOT/BOOTX64.EFI"
+    if [ -f "$BUILD_DIR/kernel/gc-aos-x86_64.elf" ]; then
+        cp "$BUILD_DIR/kernel/gc-aos-x86_64.elf" "$EFI_MOUNT/EFI/BOOT/BOOTX64.EFI"
         log "Copied kernel as BOOTX64.EFI"
     else
         log "Kernel not found, creating placeholder..."
-        echo "ANCORATE AOS x86_64 kernel placeholder" > "$EFI_MOUNT/EFI/BOOT/README.txt"
+        echo "GC AOS x86_64 kernel placeholder" > "$EFI_MOUNT/EFI/BOOT/README.txt"
     fi
 
     # Sync and unmount

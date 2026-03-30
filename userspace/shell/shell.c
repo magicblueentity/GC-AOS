@@ -150,7 +150,7 @@ static void readline(void)
 /* Built-in commands */
 static void cmd_help(void)
 {
-    print("\nANCORATE AOS Shell Commands:\n");
+    print("\nGC AOS Shell Commands:\n");
     print("  help     - Show this help\n");
     print("  uname    - Show system information\n");
     print("  whoami   - Show current user\n");
@@ -264,13 +264,13 @@ static void process_command(void)
 void _start(void)
 {
     print("\n");
-    print("ANCORATE AOS Shell v0.1\n");
+    print("GC AOS Shell v0.1\n");
     print("Type 'help' for available commands.\n");
     print("\n");
     
     /* Main shell loop */
     while (1) {
-        print("ancorate-aos# ");
+        print("gc-aos# ");
         readline();
         process_command();
     }

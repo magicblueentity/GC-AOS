@@ -1,15 +1,17 @@
-# Hello World in Python for ANCORATE AOS
+# Hello World in Python for GC AOS
 # Run with: run hello.py
+
 
 def greet(name):
     return f"Hello, {name}!"
 
+
 def main():
     print("=" * 40)
-    print("  Welcome to ANCORATE AOS Python Demo")
+    print("  Welcome to GC AOS Python Demo")
     print("=" * 40)
 
-    message = greet("ANCORATE AOS User")
+    message = greet("GC AOS User")
     print(message)
 
     # Simple calculation demo
@@ -17,7 +19,8 @@ def main():
     total = sum(numbers)
     print(f"Sum of {numbers} = {total}")
 
-    print("\nPython is working on ANCORATE AOS!")
+    print("\nPython is working on GC AOS!")
+
 
 if __name__ == "__main__":
     main()

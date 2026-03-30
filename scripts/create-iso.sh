@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================================
-# ANCORATE AOS - Create Bootable ISO for VirtualBox/VMware
+# GC AOS - Create Bootable ISO for VirtualBox/VMware
 # ============================================================================
 # Creates a bootable ISO image that can be used with:
 # - VirtualBox (ARM64 or x86_64 emulation)
@@ -17,12 +17,12 @@ set -e
 
 BUILD_DIR="$(pwd)/build"
 ISO_DIR="${BUILD_DIR}/iso"
-OUTPUT_ISO="${BUILD_DIR}/ancorate-aos.iso"
+OUTPUT_ISO="${BUILD_DIR}/gc-aos.iso"
 
-KERNEL_ELF="${BUILD_DIR}/kernel/ancorate-aos.elf"
+KERNEL_ELF="${BUILD_DIR}/kernel/gc-aos.elf"
 
 echo "============================================"
-echo "ANCORATE AOS ISO Creator"
+echo "GC AOS ISO Creator"
 echo "============================================"
 
 # Check if kernel exists
@@ -40,7 +40,7 @@ mkdir -p "${ISO_DIR}/EFI/BOOT"
 
 # Copy kernel
 echo "[COPY] Copying kernel..."
-cp "${KERNEL_ELF}" "${ISO_DIR}/boot/ancorate-aos.elf"
+cp "${KERNEL_ELF}" "${ISO_DIR}/boot/gc-aos.elf"
 
 # Create GRUB configuration
 echo "[CONFIG] Creating GRUB configuration..."
@@ -48,21 +48,21 @@ cat > "${ISO_DIR}/boot/grub/grub.cfg" << 'EOF'
 set timeout=5
 set default=0
 
-menuentry "ANCORATE AOS" {
-    echo "Loading ANCORATE AOS kernel..."
-    multiboot2 /boot/ancorate-aos.elf
+menuentry "GC AOS" {
+    echo "Loading GC AOS kernel..."
+    multiboot2 /boot/gc-aos.elf
     boot
 }
 
-menuentry "ANCORATE AOS (Debug Mode)" {
-    echo "Loading ANCORATE AOS kernel (debug)..."
-    multiboot2 /boot/ancorate-aos.elf debug verbose
+menuentry "GC AOS (Debug Mode)" {
+    echo "Loading GC AOS kernel (debug)..."
+    multiboot2 /boot/gc-aos.elf debug verbose
     boot
 }
 
-menuentry "ANCORATE AOS (Recovery)" {
-    echo "Loading ANCORATE AOS recovery..."
-    multiboot2 /boot/ancorate-aos.elf single recovery
+menuentry "GC AOS (Recovery)" {
+    echo "Loading GC AOS recovery..."
+    multiboot2 /boot/gc-aos.elf single recovery
     boot
 }
 EOF
@@ -71,8 +71,8 @@ EOF
 echo "[CONFIG] Creating EFI boot configuration..."
 cat > "${ISO_DIR}/EFI/BOOT/startup.nsh" << 'EOF'
 @echo off
-echo Loading ANCORATE AOS...
-\boot\ancorate-aos.elf
+echo Loading GC AOS...
+\boot\gc-aos.elf
 EOF
 
 # Create ISO using xorriso or mkisofs
@@ -82,13 +82,13 @@ if command -v xorriso &> /dev/null; then
     # Use xorriso (preferred)
     xorriso -as mkisofs \
         -R -J \
-        -V "ANCORATE-AOS" \
+        -V "GC-AOS" \
         -o "${OUTPUT_ISO}" \
         "${ISO_DIR}"
 elif command -v mkisofs &> /dev/null; then
     # Use mkisofs
     mkisofs -R -J \
-        -V "ANCORATE-AOS" \
+        -V "GC-AOS" \
         -o "${OUTPUT_ISO}" \
         "${ISO_DIR}"
 elif command -v hdiutil &> /dev/null; then
@@ -117,7 +117,7 @@ echo ""
 echo "1. Open VirtualBox"
 echo "2. Click 'New' to create a new VM"
 echo "3. Settings:"
-echo "   - Name: ANCORATE AOS"
+echo "   - Name: GC AOS"
 echo "   - Type: Other"
 echo "   - Version: Other/Unknown (64-bit)"
 echo "   - Memory: 2048 MB or more"
@@ -151,7 +151,7 @@ echo "============================================"
 echo ""
 echo "Run directly without ISO:"
 echo "  qemu-system-aarch64 -M virt,gic-version=3 -cpu max -m 4G \\"
-echo "      -nographic -kernel build/kernel/ancorate-aos.elf"
+echo "      -nographic -kernel build/kernel/gc-aos.elf"
 echo ""
 echo "Or boot from ISO:"
 echo "  qemu-system-aarch64 -M virt,gic-version=3 -cpu max -m 4G \\"

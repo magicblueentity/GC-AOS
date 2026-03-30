@@ -1,6 +1,6 @@
-# Building ANCORATE AOS on Ubuntu/Linux
+# Building GC AOS on Ubuntu/Linux
 
-This guide helps you build ANCORATE AOS on Ubuntu or other Linux distributions.
+This guide helps you build GC AOS on Ubuntu or other Linux distributions.
 
 ## Quick Start
 

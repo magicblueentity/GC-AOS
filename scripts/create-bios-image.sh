@@ -6,7 +6,7 @@ set -e
 
 BUILD_DIR="${1:-build/x86}"
 IMAGE_DIR="${2:-image}"
-IMAGE_NAME="ancorate-aos-x86.img"
+IMAGE_NAME="gc-aos-x86.img"
 IMAGE_SIZE="100M"
 
 # Colors
@@ -46,9 +46,9 @@ else
 fi
 
 # Write kernel
-if [ -f "$BUILD_DIR/kernel/ancorate-aos-x86.elf" ]; then
+if [ -f "$BUILD_DIR/kernel/gc-aos-x86.elf" ]; then
     # Write kernel starting at sector 32 (16KB offset)
-    dd if="$BUILD_DIR/kernel/ancorate-aos-x86.elf" of="$IMAGE_PATH" bs=512 seek=32 conv=notrunc 2>/dev/null
+    dd if="$BUILD_DIR/kernel/gc-aos-x86.elf" of="$IMAGE_PATH" bs=512 seek=32 conv=notrunc 2>/dev/null
     log "Kernel installed"
 else
     log "WARNING: Kernel not found"

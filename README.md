@@ -1,28 +1,28 @@
-# ANCORATE AOS
+# GC AOS
 
-**Multi-Architecture Operating System with GUI**
+**GC AOS - the German Operating System**
 
-ANCORATE AOS is a multi-architecture operating system with a full GUI.
+GC AOS is a multi-architecture operating system with a full GUI. It is going to be used on the GC Core Laptop.
 
 <p align="center">
-  <img src="screenshots/main.png" alt="ANCORATE AOS Desktop" width="800">
+  <img src="screenshots/main.png" alt="GC AOS Desktop" width="800">
 </p>
 
 ## Overview
 
-ANCORATE AOS is a from-scratch, Unix-like operating system with **full multi-architecture support** for **ARM64** and **x86_64**. It features a custom kernel, a modern macOS-inspired graphical user interface, a full TCP/IP networking stack, and a Virtual File System (VFS). Built with **25,000+ lines** of C and Assembly, it runs natively on QEMU, real hardware (Raspberry Pi 4/5, x86_64 PCs), and Apple Silicon (via UTM).
+GC AOS is a from-scratch, Unix-like operating system with **full multi-architecture support** for **ARM64** and **x86_64**. It features a custom kernel, a modern macOS-inspired graphical user interface, a full TCP/IP networking stack, and a Virtual File System (VFS). Built with **25,000+ lines** of C and Assembly, it runs natively on QEMU, real hardware (Raspberry Pi 4/5, x86_64 PCs, GC Core Laptop), and Apple Silicon (via UTM).
 
 ## 🎯 Multi-Architecture Support
 
 | Architecture | Boot Method | Status | Hardware |
 |--------------|-------------|--------|----------|
 | **ARM64** | Direct / UEFI | ✅ **Production Ready** | Raspberry Pi 4/5, QEMU virt, Apple Silicon (VM) |
-| **x86_64** | Direct / UEFI / BIOS | ✅ **Production Ready** | Modern PCs, QEMU, VirtualBox, VMware |
+| **x86_64** | Direct / UEFI / BIOS | ✅ **Production Ready** | used on the GC Core Laptop |
 | **x86** | Direct / BIOS (MBR) | ✅ **Builds Successfully** | Legacy PCs, QEMU pc |
 
 ### What Works Now
 
-- ✅ **ARM64**: Fully tested and stable on QEMU and Raspberry Pi
+- ✅ **ARM64**: Fully tested and stable on QEMU and Raspberry Pi, runs on GC Core
 - ✅ **x86_64**: Kernel builds and boots successfully
 - ✅ **x86 32-bit**: Kernel builds successfully (testing in progress)
 - ✅ **Architecture Abstraction Layer**: Clean separation of arch-specific code
@@ -34,7 +34,7 @@ ANCORATE AOS is a from-scratch, Unix-like operating system with **full multi-arc
 
 ### Main Desktop
 ![Main Desktop](screenshots/main.png)
-*ANCORATE AOS desktop with animated dock, menu bar, and wallpaper system.*
+*GC AOS desktop with animated dock, menu bar, and wallpaper system, currently running on 1080p.*
 
 ### File Manager
 ![File Manager](screenshots/filemanager.png)
@@ -157,7 +157,7 @@ graph TD
 - **Python Interpreter**: Run Python scripts directly in the terminal
   ```bash
   $ python examples/hello.py
-  Hello, ANCORATE AOS!
+  Hello, GC AOS!
   
   $ python examples/fibonacci.py
   0, 1, 1, 2, 3, 5, 8, 13, 21, 34
@@ -263,8 +263,8 @@ sudo pacman -S qemu-system-aarch64 qemu-system-x86 aarch64-linux-gnu-gcc make
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/ancorate-aos.git
-cd ancorate-aos
+git clone https://github.com/your-org/gc-aos.git
+cd gc-aos
 
 # Build everything (kernel, drivers, userspace)
 make all
@@ -322,10 +322,10 @@ make image
 
 # Write to SD card (replace diskX with your SD card)
 # macOS
-sudo dd if=image/ancorate-aos.img of=/dev/rdiskX bs=4m status=progress
+sudo dd if=image/gc-aos.img of=/dev/rdiskX bs=4m status=progress
 
 # Linux
-sudo dd if=image/ancorate-aos.img of=/dev/sdX bs=4M status=progress && sync
+sudo dd if=image/gc-aos.img of=/dev/sdX bs=4M status=progress && sync
 ```
 
 ### For x86_64 PC
@@ -341,7 +341,7 @@ sudo dd if=image/ancorate-aos.img of=/dev/sdX bs=4M status=progress && sync
 ./scripts/create-iso.sh
 
 # Write to USB drive
-sudo dd if=ancorate-aos-x86_64.img of=/dev/sdX bs=4M status=progress && sync
+sudo dd if=gc-aos-x86_64.img of=/dev/sdX bs=4M status=progress && sync
 ```
 
 ## 🧪 Testing
@@ -366,19 +366,19 @@ make -f Makefile.multiarch ARCH=x86_64 qemu
 
 #### Raspberry Pi 4/5
 1. Build image: `make image`
-2. Write to SD card: `sudo dd if=image/ancorate-aos.img of=/dev/sdX bs=4M`
+2. Write to SD card: `sudo dd if=image/gc-aos.img of=/dev/sdX bs=4M`
 3. Insert SD card and power on
 
 #### x86_64 PC
 1. Create bootable USB: `./scripts/create-uefi-image.sh`
-2. Write to USB: `sudo dd if=ancorate-aos-x86_64.img of=/dev/sdX bs=4M`
+2. Write to USB: `sudo dd if=gc-aos-x86_64.img of=/dev/sdX bs=4M`
 3. Boot from USB (select UEFI boot in BIOS)
 
 ### Apple Silicon (M1/M2/M3/M4)
 
 Use UTM (https://mac.getutm.app/):
 1. Create new ARM64 virtual machine
-2. Use `image/ancorate-aos.img` as boot disk
+2. Use `image/gc-aos.img` as boot disk
 3. Configure 2GB+ RAM
 4. Start VM
 
@@ -463,7 +463,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - **Website**: [jijojohn.me](https://jijojohn.me)
 - **GitHub**: [github.com/viralcode](https://github.com/viralcode)
-- **Repository**: `ancorate-aos` (update this to your repository URL)
+- **Repository**: `gc-aos` (update this to your repository URL)
 - **Issues**: Use your repository issue tracker
 
 ---

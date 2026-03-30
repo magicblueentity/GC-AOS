@@ -1,4 +1,4 @@
-// Simple Calculator in NanoLang for Vib-OS
+// Simple Calculator in NanoLang for GC AOS
 // Run with: run calculator.nano
 
 fn add(a: int, b: int) -> int {
@@ -24,18 +24,18 @@ fn divide(a: int, b: int) -> int {
 fn main() {
     print("NanoLang Calculator Demo");
     print("------------------------");
-    
+
     let x = 42;
     let y = 7;
-    
+
     print("x = 42, y = 7");
     print("");
-    
+
     print("add(x, y) = " + add(x, y));
     print("subtract(x, y) = " + subtract(x, y));
     print("multiply(x, y) = " + multiply(x, y));
     print("divide(x, y) = " + divide(x, y));
-    
+
     print("");
     print("Calculator demo complete!");
 }

@@ -75,10 +75,10 @@ static void print_banner(void) {
   printk("  \\ V /| || |_) |  | |_| |___) |\n");
   printk("   \\_/ |_||_.__/    \\___/|____/ \n");
   printk("\n");
-  printk("ANCORATE AOS v%d.%d.%d - ARM64 with GUI\n", VIBOS_VERSION_MAJOR,
+  printk("GC AOS v%d.%d.%d - ARM64 with GUI\n", VIBOS_VERSION_MAJOR,
          VIBOS_VERSION_MINOR, VIBOS_VERSION_PATCH);
   printk("A modern Unix-like operating system for ARM64\n");
-  printk("Copyright (c) 2026 ANCORATE AOS Project\n");
+  printk("Copyright (c) 2026 GC AOS Project\n");
   printk("\n");
 }
 
@@ -184,17 +184,17 @@ static void init_subsystems(void *dtb) {
 
   /* Seed Desktop with sample files and folders */
   ramfs_create_file("/Desktop/notes.txt", 0644,
-                    "Welcome to ANCORATE AOS!\n\nThis is your desktop - right-click "
+                    "Welcome to GC AOS!\n\nThis is your desktop - right-click "
                     "for options!\n");
   ramfs_create_file("/Desktop/readme.txt", 0644,
-                    "ANCORATE AOS Desktop Manager\n\n- Double-click to open files\n- "
+                    "GC AOS Desktop Manager\n\n- Double-click to open files\n- "
                     "Right-click for context menu\n");
 
   /* Create a subfolder on Desktop */
   extern int vfs_mkdir(const char *path, mode_t mode);
   vfs_mkdir("/Desktop/Projects", 0755);
   ramfs_create_file("readme.txt", 0644,
-                    "Welcome to ANCORATE AOS!\nThis is a real file in RamFS.");
+                    "Welcome to GC AOS!\nThis is a real file in RamFS.");
   ramfs_create_file("todo.txt", 0644,
                     "- Implement Browser\n- Fix Bugs\n- Sleep");
   ramfs_create_file_bytes("sample.mp3", 0644, vib_seed_mp3, vib_seed_mp3_len);
@@ -256,13 +256,13 @@ static void init_subsystems(void *dtb) {
 
   /* Python demo files */
   ramfs_create_file("examples/hello.py", 0644,
-                    "# Hello World in Python for ANCORATE AOS\n"
+                    "# Hello World in Python for GC AOS\n"
                     "# Run with: run hello.py\n\n"
                     "def greet(name):\n"
                     "    return 'Hello, ' + name + '!'\n\n"
                     "def main():\n"
-                    "    print('Welcome to ANCORATE AOS Python Demo')\n"
-                    "    message = greet('ANCORATE AOS User')\n"
+                    "    print('Welcome to GC AOS Python Demo')\n"
+                    "    message = greet('GC AOS User')\n"
                     "    print(message)\n\n"
                     "if __name__ == '__main__':\n"
                     "    main()\n");
@@ -287,7 +287,7 @@ static void init_subsystems(void *dtb) {
                     "}\n\n"
                     "fn main() {\n"
                     "    print('Welcome to NanoLang');\n"
-                    "    let msg = greet('ANCORATE AOS');\n"
+                    "    let msg = greet('GC AOS');\n"
                     "    print(msg);\n"
                     "}\n");
 
@@ -332,7 +332,8 @@ static void init_subsystems(void *dtb) {
 
     /* Create demo windows with working terminal */
     extern struct window *gui_create_file_manager(int x, int y);
-    gui_create_window("Terminal", 50, 50, 400, 300);
+    extern void gui_set_window_userdata(struct window *win, void *data);
+    struct window *boot_term_win = gui_create_window("Terminal", 50, 50, 400, 300);
 
     /* Create and set active terminal so keyboard input works */
     {
@@ -340,6 +341,9 @@ static void init_subsystems(void *dtb) {
       extern void term_set_active(struct terminal * term);
       struct terminal *term = term_create(52, 80, 48, 15);
       if (term) {
+        if (boot_term_win) {
+          gui_set_window_userdata(boot_term_win, term);
+        }
         term_set_active(term);
       }
     }
@@ -348,7 +352,6 @@ static void init_subsystems(void *dtb) {
 
     /* Compose and display desktop */
     gui_compose();
-    gui_draw_cursor();
 
     printk(KERN_INFO "  GUI desktop ready!\n");
   }
@@ -399,6 +402,7 @@ static void init_subsystems(void *dtb) {
 
 /* Global terminal pointer for keyboard callback */
 static void *g_active_terminal = 0;
+static volatile int g_gui_redraw_requested = 0;
 
 /* Keyboard callback wrapper */
 /* Keyboard callback wrapper */
@@ -408,6 +412,12 @@ static void keyboard_handler(int key) {
   /* Send to KAPI input buffer for non-windowed apps (e.g. Doom) */
   extern void kapi_sys_key_event(int key);
   kapi_sys_key_event(key);
+}
+
+static void gui_keyboard_handler(int key) {
+  extern void gui_handle_key_event(int key);
+  gui_handle_key_event(key);
+  g_gui_redraw_requested = 1;
 }
 
 static void start_init_process(void) {
@@ -421,53 +431,44 @@ static void start_init_process(void) {
   extern int input_init(void);
   extern void input_poll(void);
   extern void input_set_key_callback(void (*callback)(int key));
+  extern void input_set_gui_key_callback(void (*callback)(int key));
   extern void gui_compose(void);
-  extern void gui_draw_cursor(void);
+  extern void gui_refresh_cursor(void);
+  extern int gui_mouse_needs_full_redraw(void);
+  extern void mouse_get_position(int *x, int *y);
+  extern int mouse_get_buttons(void);
+  extern void gui_handle_mouse_event(int x, int y, int buttons);
 
   input_init();
 
   /* Connect keyboard input to terminal */
   input_set_key_callback(keyboard_handler);
+  input_set_gui_key_callback(gui_keyboard_handler);
 
   printk(KERN_INFO "GUI: Event loop started - type in terminal!\\n");
 
   /* Initial render */
   gui_compose();
-  gui_draw_cursor();
 
   /* Main GUI event loop with proper flicker-free refresh */
   uint32_t frame = 0;
   int last_mx = 0, last_my = 0;
   int last_buttons = 0;
   int needs_redraw = 1; /* Initial draw */
-  int cursor_only = 0;  /* Only cursor needs updating */
+  int cursor_dirty = 0;
 
-  /* Timer for periodic auto-refresh (33ms = 30 FPS for responsive UI) */
-  uint64_t last_refresh = arch_timer_get_ms();
-  const uint64_t REFRESH_MS = 33; /* 30 FPS - responsive mouse */
+  mouse_get_position(&last_mx, &last_my);
+  last_buttons = mouse_get_buttons();
+
+  /* 60 FPS when interacting, low-rate refresh when idle. */
+  uint64_t last_frame = arch_timer_get_ms();
+  uint64_t last_idle_refresh = last_frame;
+  const uint64_t FRAME_MS = 16;
+  const uint64_t IDLE_REFRESH_MS = 100;
 
   while (1) {
     /* Poll virtio input devices (keyboard/mouse) - MUST call this! */
     input_poll();
-
-    /* Poll for keyboard input from UART as well */
-    extern int uart_getc_nonblock(void);
-    extern void gui_handle_key_event(int key);
-    int c = uart_getc_nonblock();
-    if (c >= 0) {
-      /* Route to focused window */
-      gui_handle_key_event(c);
-      needs_redraw = 1;
-    }
-
-    /* Poll input system (Keyboard & Mouse) */
-    extern void input_poll(void);
-    input_poll();
-
-    /* Get mouse state (updated by input_poll) */
-    extern void mouse_get_position(int *x, int *y);
-    extern int mouse_get_buttons(void);
-    extern void gui_handle_mouse_event(int x, int y, int buttons);
 
     int mx, my;
     mouse_get_position(&mx, &my);
@@ -478,33 +479,46 @@ static void start_init_process(void) {
       /* Always call mouse event handler for hover support */
       gui_handle_mouse_event(mx, my, mbuttons);
 
-      /* Always redraw on mouse move - cursor is now composited */
-      needs_redraw = 1;
+      if (mbuttons != last_buttons) {
+        needs_redraw = 1;
+      } else if (gui_mouse_needs_full_redraw()) {
+        needs_redraw = 1;
+      } else {
+        cursor_dirty = 1;
+      }
 
       last_mx = mx;
       last_my = my;
       last_buttons = mbuttons;
     }
 
-    /* Periodic refresh for animations (5 FPS) */
     uint64_t now = arch_timer_get_ms();
-    if (now - last_refresh >= REFRESH_MS) {
-      last_refresh = now;
+    if (g_gui_redraw_requested) {
       needs_redraw = 1;
+      g_gui_redraw_requested = 0;
     }
 
-    /* Redraw when needed - compose includes cursor drawing */
-    if (needs_redraw) {
+    if (needs_redraw && (now - last_frame >= FRAME_MS)) {
       gui_compose(); /* Cursor is drawn inside compose, before blit */
       needs_redraw = 0;
-      cursor_only = 0;
+      cursor_dirty = 0;
+      last_frame = now;
+      last_idle_refresh = now;
+    } else if (cursor_dirty && (now - last_frame >= FRAME_MS)) {
+      gui_refresh_cursor();
+      cursor_dirty = 0;
+      last_frame = now;
+    } else if (now - last_idle_refresh >= IDLE_REFRESH_MS) {
+      gui_compose();
+      last_frame = now;
+      last_idle_refresh = now;
     }
 
     frame++;
     (void)frame;
 
-    /* Short yield - allows input polling without slowing mouse */
-    for (volatile int i = 0; i < 500; i++) {
+    /* Short yield keeps the polling loop responsive without burning as much CPU. */
+    for (volatile int i = 0; i < 100; i++) {
     }
   }
 }

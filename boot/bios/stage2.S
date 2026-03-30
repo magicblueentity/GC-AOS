@@ -198,7 +198,7 @@ gdt_descriptor:
 /* ===================================================================== */
 
 msg_stage2:
-    .asciz  "ANCORATE AOS Stage 2\r\n"
+    .asciz  "GC AOS Stage 2\r\n"
 
 msg_protected:
     .asciz  "Protected Mode OK"

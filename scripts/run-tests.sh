@@ -1,10 +1,10 @@
 #!/bin/bash
-# Run ANCORATE AOS tests
+# Run GC AOS tests
 
 set -e
 
 echo "========================================"
-echo "ANCORATE AOS Test Suite"
+echo "GC AOS Test Suite"
 echo "========================================"
 
 # Colors
@@ -51,9 +51,9 @@ echo ""
 echo "Kernel Tests"
 echo "------------"
 
-if [ -f build/kernel/ancorate-aos.elf ]; then
-    run_test "Kernel binary exists" "[ -f build/kernel/ancorate-aos.elf ]"
-    run_test "Kernel is ARM64" "file build/kernel/ancorate-aos.elf | grep -q 'ARM aarch64'"
+if [ -f build/kernel/gc-aos.elf ]; then
+    run_test "Kernel binary exists" "[ -f build/kernel/gc-aos.elf ]"
+    run_test "Kernel is ARM64" "file build/kernel/gc-aos.elf | grep -q 'ARM aarch64'"
 else
     echo -e "  ${YELLOW}Kernel not yet built, skipping...${NC}"
 fi

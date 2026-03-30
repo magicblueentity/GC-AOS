@@ -546,8 +546,8 @@ static long sys_uname(uint64_t buf, uint64_t a1, uint64_t a2, uint64_t a3,
   struct utsname *uts = (struct utsname *)buf;
 
   /* Copy strings (simple implementation) */
-  const char *sysname = "ANCORATE AOS";
-  const char *nodename = "ancorate-aos";
+  const char *sysname = "GC AOS";
+  const char *nodename = "gc-aos";
   const char *release = "0.1.0";
   const char *version = "0.1.0-arm64";
   const char *machine = "aarch64";

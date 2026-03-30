@@ -841,7 +841,7 @@ static void menu_action_open(void *ctx) {
             }
             run_cmd[j] = '\0';
             term_execute_command(term, run_cmd);
-            term_puts(term, "\n\033[32mancorate-aos\033[0m:\033[34m~\033[0m$ ");
+            term_puts(term, "\n\033[32mgc-aos\033[0m:\033[34m~\033[0m$ ");
           }
         }
         py_spawn_x = (py_spawn_x + 40) % 300 + 100;

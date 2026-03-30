@@ -1,5 +1,5 @@
-# ANCORATE AOS Master Makefile
-# ARM64 OS for Apple Silicon and Raspberry Pi
+# GC AOS Master Makefile
+# ARM64 OS for Apple Silicon and Raspberry Pi, used by GC for the GC Core
 
 # ============================================================================
 # Configuration
@@ -85,7 +85,7 @@ QEMU_CPU := max
 QEMU_MEMORY := 4G
 QEMU_FLAGS := -M $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_MEMORY) \
               -nographic -serial mon:stdio \
-              -drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/ancorate-aos.img \
+              -drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/gc-aos.img \
               -device virtio-blk-device,drive=hd0
 
 # ============================================================================
@@ -96,13 +96,13 @@ QEMU_FLAGS := -M $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_MEMORY) \
 
 all: kernel drivers libc userspace runtimes image
 	@echo "=========================================="
-	@echo "ANCORATE AOS build complete!"
+	@echo "GC AOS build complete!"
 	@echo "=========================================="
-	@echo "Boot image: $(IMAGE_DIR)/ancorate-aos.img"
+	@echo "Boot image: $(IMAGE_DIR)/gc-aos.img"
 	@echo "Run 'make qemu' to test in emulator"
 
 help:
-	@echo "ANCORATE AOS Build System"
+	@echo "GC AOS Build System"
 	@echo "==================="
 	@echo ""
 	@echo "Build targets:"
@@ -157,7 +157,7 @@ DRIVER_SOURCES := $(shell find $(DRIVERS_DIR) -name '*.c' 2>/dev/null)
 DRIVER_OBJECTS := $(patsubst $(DRIVERS_DIR)/%.c,$(BUILD_DIR)/drivers/%.o,$(DRIVER_SOURCES))
 
 ALL_KERNEL_OBJECTS := $(KERNEL_OBJECTS) $(DRIVER_OBJECTS)
-KERNEL_BINARY := $(BUILD_DIR)/kernel/ancorate-aos.elf
+KERNEL_BINARY := $(BUILD_DIR)/kernel/gc-aos.elf
 
 kernel: $(BUILD_DIR) $(ALL_KERNEL_OBJECTS) $(KERNEL_BINARY)
 	@echo "[KERNEL] Build complete: $(KERNEL_BINARY)"
@@ -244,20 +244,20 @@ runtimes: $(BUILD_DIR) libc
 image: $(IMAGE_DIR) kernel drivers
 	@echo "[IMAGE] Creating bootable disk image..."
 	@./scripts/create-boot-image.sh $(BUILD_DIR) $(IMAGE_DIR)
-	@echo "[IMAGE] Created: $(IMAGE_DIR)/ancorate-aos.img"
+	@echo "[IMAGE] Created: $(IMAGE_DIR)/gc-aos.img"
 
 # ============================================================================
 # QEMU Testing
 # ============================================================================
 
 qemu: kernel
-	@echo "[QEMU] Starting ANCORATE AOS in emulator (direct kernel boot)..."
+	@echo "[QEMU] Starting GC AOS in emulator (direct kernel boot)..."
 	@$(QEMU) -M virt,gic-version=3 -cpu max -m 4G \
 		-nographic \
-		-kernel $(BUILD_DIR)/kernel/ancorate-aos.elf
+		-kernel $(BUILD_DIR)/kernel/gc-aos.elf
 
 qemu-uefi: image
-	@echo "[QEMU] Starting ANCORATE AOS with UEFI boot..."
+	@echo "[QEMU] Starting GC AOS with UEFI boot..."
 	@echo "[QEMU] Note: Requires UEFI firmware (AAVMF)"
 	@if [ ! -f /usr/share/qemu-efi-aarch64/QEMU_EFI.fd ]; then \
 		echo "[ERROR] UEFI firmware not found. Install qemu-efi-aarch64 package."; \
@@ -267,14 +267,14 @@ qemu-uefi: image
 	@$(QEMU) -M virt,gic-version=3 -cpu max -m 4G \
 		-nographic \
 		-drive if=pflash,format=raw,readonly=on,file=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd \
-		-drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/ancorate-aos.img \
+		-drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/gc-aos.img \
 		-device virtio-blk-device,drive=hd0
 
 qemu-debug: kernel
-	@echo "[QEMU] Starting ANCORATE AOS with GDB server on port 1234..."
+	@echo "[QEMU] Starting GC AOS with GDB server on port 1234..."
 	@$(QEMU) -M virt,gic-version=3 -cpu max -m 4G \
 		-nographic \
-		-kernel $(BUILD_DIR)/kernel/ancorate-aos.elf \
+		-kernel $(BUILD_DIR)/kernel/gc-aos.elf \
 		-s -S
 
 # ============================================================================
@@ -290,14 +290,16 @@ test: kernel
 # ============================================================================
 
 run: kernel
-	@echo "[RUN] Starting ANCORATE AOS in QEMU..."
+	@echo "[RUN] Starting GC AOS in QEMU..."
 	@qemu-system-aarch64 -M virt,gic-version=3 -cpu max -m 4G -nographic -kernel $(KERNEL_BINARY)
 
 run-gui: kernel
-	@echo "[RUN] Starting ANCORATE AOS with GUI display..."
+	@echo "[RUN] Starting GC AOS with GUI display..."
 	@qemu-system-aarch64 -M virt,gic-version=3 \
-		-cpu max -m 512M \
+		-cpu max -m 4G \
 		-global virtio-mmio.force-legacy=false \
+		-drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/gc-aos.img \
+		-device virtio-blk-device,drive=hd0 \
 		-device ramfb \
 		-device virtio-keyboard-device \
 		-device virtio-tablet-device \
@@ -309,10 +311,12 @@ run-gui: kernel
 		-kernel $(KERNEL_BINARY)
 
 run-gpu: kernel
-	@echo "[RUN] Starting ANCORATE AOS with virtio-GPU acceleration..."
+	@echo "[RUN] Starting GC AOS with virtio-GPU acceleration..."
 	@qemu-system-aarch64 -M virt,gic-version=3 \
-		-cpu max -m 512M \
+		-cpu max -m 4G \
 		-global virtio-mmio.force-legacy=false \
+		-drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/gc-aos.img \
+		-device virtio-blk-device,drive=hd0 \
 		-device ramfb \
 		-device virtio-gpu-pci \
 		-device virtio-keyboard-device \
