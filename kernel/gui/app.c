@@ -136,7 +136,7 @@ static void settings_draw(struct application *app) {
   y += 30;
   gui_draw_string(278, y, "GC AOS v0.3.0", 0x808080, 0x1E1E2E);
   y += 20;
-  gui_draw_string(270, y, "ARM64 Operating System", 0x808080, 0x1E1E2E);
+  gui_draw_string(270, y, "The German Operating System", 0x808080, 0x1E1E2E);
 }
 
 /* Simple Text Editor */

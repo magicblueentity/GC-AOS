@@ -3019,6 +3019,12 @@ static void draw_dock(void) {
 static uint32_t *cached_wallpaper = NULL;
 static int wallpaper_cached = 0;
 static int wallpaper_cached_idx = -1; /* Which wallpaper is cached */
+static int cached_wallpaper_w = 0;
+static int cached_wallpaper_h = 0;
+static uint32_t *cached_desktop_scene = NULL;
+static int cached_desktop_scene_w = 0;
+static int cached_desktop_scene_h = 0;
+static int desktop_scene_cached = 0;
 
 /* Draw wallpaper - supports both gradients and JPEG images */
 static void draw_wallpaper(void) {
@@ -3027,6 +3033,7 @@ static void draw_wallpaper(void) {
   int end_y = primary_display.height;
   int height = end_y - start_y;
   int width = primary_display.width;
+  int cache_pixels = width * height;
 
   /* Check if we need to reload (wallpaper changed) */
   if (wallpaper_cached_idx != current_wallpaper) {
@@ -3036,53 +3043,118 @@ static void draw_wallpaper(void) {
     wallpaper_ensure_loaded();
   }
 
-  /* Check if this is an image wallpaper */
-  if (wallpapers[current_wallpaper].type == 1 && wallpaper_image.pixels) {
-    /* Draw scaled JPEG image - simple nearest neighbor for reliability */
-    uint32_t img_w = wallpaper_image.width;
-    uint32_t img_h = wallpaper_image.height;
-    uint32_t *pixels = wallpaper_image.pixels;
-
-    /* Calculate scale factors (fixed point 16.16) */
-    uint32_t scale_x = (img_w << 16) / width;
-    uint32_t scale_y = (img_h << 16) / height;
-
-    for (int y = start_y; y < end_y; y++) {
-      uint32_t *line =
-          primary_display.backbuffer + y * (primary_display.pitch / 4);
-      uint32_t src_y = ((y - start_y) * scale_y) >> 16;
-      if (src_y >= img_h)
-        src_y = img_h - 1;
-      uint32_t *src_row = pixels + src_y * img_w;
-
-      for (int x = 0; x < width; x++) {
-        uint32_t src_x = (x * scale_x) >> 16;
-        if (src_x >= img_w)
-          src_x = img_w - 1;
-        line[x] = src_row[src_x];
-      }
+  if (!cached_wallpaper || cached_wallpaper_w != width ||
+      cached_wallpaper_h != height) {
+    if (cached_wallpaper) {
+      kfree(cached_wallpaper);
+      cached_wallpaper = NULL;
     }
-    return;
+    cached_wallpaper = kmalloc(cache_pixels * sizeof(uint32_t));
+    cached_wallpaper_w = width;
+    cached_wallpaper_h = height;
+    wallpaper_cached = 0;
   }
 
-  /* Gradient wallpaper - use wallpaper_get_pixel */
+  if (!cached_wallpaper) {
+    wallpaper_cached = 0;
+  }
+
+  if (!wallpaper_cached && cached_wallpaper) {
+    /* Check if this is an image wallpaper */
+    if (wallpapers[current_wallpaper].type == 1 && wallpaper_image.pixels) {
+      /* Draw scaled JPEG image - simple nearest neighbor for reliability */
+      uint32_t img_w = wallpaper_image.width;
+      uint32_t img_h = wallpaper_image.height;
+      uint32_t *pixels = wallpaper_image.pixels;
+
+      /* Calculate scale factors (fixed point 16.16) */
+      uint32_t scale_x = (img_w << 16) / width;
+      uint32_t scale_y = (img_h << 16) / height;
+
+      for (int y = 0; y < height; y++) {
+        uint32_t *line = cached_wallpaper + y * width;
+        uint32_t src_y = (y * scale_y) >> 16;
+        if (src_y >= img_h)
+          src_y = img_h - 1;
+        uint32_t *src_row = pixels + src_y * img_w;
+
+        for (int x = 0; x < width; x++) {
+          uint32_t src_x = (x * scale_x) >> 16;
+          if (src_x >= img_w)
+            src_x = img_w - 1;
+          line[x] = src_row[src_x];
+        }
+      }
+    } else {
+      /* Gradient wallpaper - use wallpaper_get_pixel */
+      for (int y = 0; y < height; y++) {
+        uint32_t *line = cached_wallpaper + y * width;
+        uint32_t color = wallpaper_get_pixel(0, y, height);
+
+        for (int x = 0; x < width; x++) {
+          line[x] = color;
+        }
+      }
+    }
+    wallpaper_cached = 1;
+  }
+
   for (int y = start_y; y < end_y; y++) {
     uint32_t *line =
         primary_display.backbuffer + y * (primary_display.pitch / 4);
-    uint32_t color = wallpaper_get_pixel(0, y - start_y, height);
-
+    uint32_t *src = cached_wallpaper + (y - start_y) * width;
     for (int x = 0; x < width; x++) {
-      line[x] = color;
+      line[x] = src[x];
     }
   }
 }
 
-static void draw_desktop(void) {
-  /* Draw beautiful gradient wallpaper */
-  draw_wallpaper();
+void gui_invalidate_desktop_cache(void) { desktop_scene_cached = 0; }
 
-  /* Draw desktop icons */
-  desktop_draw_icons();
+static void draw_desktop(void) {
+  int width = primary_display.width;
+  int height = primary_display.height;
+  int pitch_pixels = primary_display.pitch / 4;
+  int scene_pixels = width * height;
+
+  if (!cached_desktop_scene || cached_desktop_scene_w != width ||
+      cached_desktop_scene_h != height) {
+    if (cached_desktop_scene) {
+      kfree(cached_desktop_scene);
+      cached_desktop_scene = NULL;
+    }
+    cached_desktop_scene = kmalloc(scene_pixels * sizeof(uint32_t));
+    cached_desktop_scene_w = width;
+    cached_desktop_scene_h = height;
+    desktop_scene_cached = 0;
+  }
+
+  if (cached_desktop_scene && !desktop_scene_cached) {
+    draw_wallpaper();
+    desktop_draw_icons();
+
+    for (int y = 0; y < height; y++) {
+      uint32_t *src = primary_display.backbuffer + y * pitch_pixels;
+      uint32_t *dst = cached_desktop_scene + y * width;
+      for (int x = 0; x < width; x++) {
+        dst[x] = src[x];
+      }
+    }
+    desktop_scene_cached = 1;
+  }
+
+  if (cached_desktop_scene) {
+    for (int y = 0; y < height; y++) {
+      uint32_t *src = cached_desktop_scene + y * width;
+      uint32_t *dst = primary_display.backbuffer + y * pitch_pixels;
+      for (int x = 0; x < width; x++) {
+        dst[x] = src[x];
+      }
+    }
+  } else {
+    draw_wallpaper();
+    desktop_draw_icons();
+  }
 
   /* Draw menu bar at top (glass effect) */
   draw_menu_bar();

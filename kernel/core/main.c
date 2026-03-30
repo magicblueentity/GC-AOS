@@ -1,5 +1,5 @@
 /*
- * UnixOS Kernel - Main Entry Point
+ * GC AOS Kernel - Main Entry Point
  *
  * This is the C entry point called from boot.S after basic
  * hardware initialization is complete.
@@ -69,16 +69,11 @@ void kernel_main(void *dtb) {
  */
 static void print_banner(void) {
   printk("\n");
-  printk("        _  _         ___  ____  \n");
-  printk(" __   _(_)| |__     / _ \\/ ___| \n");
-  printk(" \\ \\ / / || '_ \\   | | | \\___ \\ \n");
-  printk("  \\ V /| || |_) |  | |_| |___) |\n");
-  printk("   \\_/ |_||_.__/    \\___/|____/ \n");
   printk("\n");
   printk("GC AOS v%d.%d.%d - ARM64 with GUI\n", VIBOS_VERSION_MAJOR,
          VIBOS_VERSION_MINOR, VIBOS_VERSION_PATCH);
   printk("A modern Unix-like operating system for ARM64\n");
-  printk("Copyright (c) 2026 GC AOS Project\n");
+  printk("Copyright (c) 2026 German Computers\n");
   printk("\n");
 }
 

@@ -236,6 +236,8 @@ static int get_icon_type(const char *name, int is_dir) {
 /* ===================================================================== */
 
 void desktop_mark_dirty(int x, int y, int w, int h) {
+  extern void gui_invalidate_desktop_cache(void);
+  gui_invalidate_desktop_cache();
   if (dirty_count < 32) {
     dirty_regions[dirty_count].x = x;
     dirty_regions[dirty_count].y = y;
@@ -254,6 +256,8 @@ void desktop_mark_dirty(int x, int y, int w, int h) {
 }
 
 void desktop_mark_full_redraw(void) {
+  extern void gui_invalidate_desktop_cache(void);
+  gui_invalidate_desktop_cache();
   full_redraw_needed = 1;
   dirty_count = 0;
 }

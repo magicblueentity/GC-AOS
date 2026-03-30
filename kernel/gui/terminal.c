@@ -360,33 +360,13 @@ void term_render(struct terminal *term) {
   int base_x = term->content_x + TERM_PADDING;
   int base_y = term->content_y + TERM_PADDING;
   int cell_count = term->rows * term->cols;
-  bool moved = (term->content_x != term->last_content_x) ||
-               (term->content_y != term->last_content_y);
-  bool full_refresh = term->full_refresh || moved;
+  gui_draw_rect(term->content_x, term->content_y,
+                term->cols * TERM_CHAR_W + TERM_PADDING * 2,
+                term->rows * TERM_CHAR_H + TERM_PADDING * 2, term_colors[0]);
 
-  if (full_refresh) {
-    gui_draw_rect(term->content_x, term->content_y,
-                  term->cols * TERM_CHAR_W + TERM_PADDING * 2,
-                  term->rows * TERM_CHAR_H + TERM_PADDING * 2, term_colors[0]);
-
-    for (int row = 0; row < term->rows; row++) {
-      for (int col = 0; col < term->cols; col++) {
-        term_draw_cell(term, row, col);
-      }
-    }
-  } else {
-    if (term->last_cursor_visible) {
-      term_draw_cell(term, term->last_cursor_y, term->last_cursor_x);
-    }
-
-    for (int idx = 0; idx < cell_count; idx++) {
-      if (term->chars[idx] != term->prev_chars[idx] ||
-          term->fg_colors[idx] != term->prev_fg_colors[idx] ||
-          term->bg_colors[idx] != term->prev_bg_colors[idx]) {
-        int row = idx / term->cols;
-        int col = idx % term->cols;
-        term_draw_cell(term, row, col);
-      }
+  for (int row = 0; row < term->rows; row++) {
+    for (int col = 0; col < term->cols; col++) {
+      term_draw_cell(term, row, col);
     }
   }
 
@@ -657,11 +637,6 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, "root\n");
   } else if (str_starts_with(cmd, "neofetch")) {
     term_puts(term, "\033[36m");
-    term_puts(term, "       _  _         ___  ____  \n");
-    term_puts(term, " __   _(_)| |__     / _ \\/ ___| \n");
-    term_puts(term, " \\ \\ / / || '_ \\   | | | \\___ \\ \n");
-    term_puts(term, "  \\ V /| || |_) |  | |_| |___) |\n");
-    term_puts(term, "   \\_/ |_||_.__/    \\___/|____/ \n");
     term_puts(term, "\033[0m\n");
     term_puts(term, "\033[33mOS:\033[0m      GC AOS 0.5.0\n");
     term_puts(term, "\033[33mHost:\033[0m    QEMU ARM Virtual Machine\n");
