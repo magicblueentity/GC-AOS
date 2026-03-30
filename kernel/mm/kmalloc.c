@@ -13,15 +13,17 @@
 /* Configuration */
 /* ===================================================================== */
 
-#define HEAP_SIZE                                                              \
-  (512 * 1024 * 1024) /* 512MB kernel heap within the first 1GB RAM window */
+#define DEFAULT_HEAP_SIZE                                                      \
+  (512 * 1024 * 1024) /* Prefer a large heap when enough RAM is available */
+#define MIN_HEAP_SIZE (64 * 1024 * 1024)
 #define MIN_ALLOC 32  /* Minimum allocation size */
 #define MAX_ALLOC                                                              \
   (64 * 1024 * 1024) /* Maximum single allocation */
 
 /* Fixed heap location - after kernel at 0x42000000 */
 /* Kernel loads at 0x40200000, so 0x42000000 gives 30MB for kernel code/data */
-#define HEAP_BASE 0x42000000
+#define HEAP_BASE 0x42000000UL
+#define PMM_MEMORY_BASE 0x40000000UL
 
 /* Block header */
 struct block_header {
@@ -87,13 +89,24 @@ void kmalloc_init(void) {
   /* Use fixed memory region - no PMM dependency */
   /* This is like how VibeOS does it - simple and reliable */
   heap_start = (uint8_t *)HEAP_BASE;
-  heap_end = heap_start + HEAP_SIZE;
-  heap_total = HEAP_SIZE;
+  size_t total_memory = pmm_get_total_memory();
+  size_t heap_ceiling = 0;
+  if (total_memory > (HEAP_BASE - PMM_MEMORY_BASE)) {
+    heap_ceiling = total_memory - (HEAP_BASE - PMM_MEMORY_BASE);
+  }
+  heap_total = DEFAULT_HEAP_SIZE;
+  if (heap_ceiling && heap_total > heap_ceiling) {
+    heap_total = heap_ceiling;
+  }
+  if (heap_total < MIN_HEAP_SIZE) {
+    heap_total = MIN_HEAP_SIZE;
+  }
+  heap_end = heap_start + heap_total;
   heap_used = 0;
 
   /* Initialize single free block covering entire heap */
   free_list = (struct block_header *)heap_start;
-  free_list->size = HEAP_SIZE;
+  free_list->size = heap_total;
   free_list->magic = BLOCK_MAGIC_FREE;
   free_list->flags = BLOCK_FLAG_FREE;
   free_list->next = NULL;
@@ -103,7 +116,7 @@ void kmalloc_init(void) {
 
   printk(KERN_INFO "KMALLOC: Heap at 0x%lx - 0x%lx (%lu KB)\n",
          (unsigned long)heap_start, (unsigned long)heap_end,
-         (unsigned long)(HEAP_SIZE / 1024));
+         (unsigned long)(heap_total / 1024));
 }
 
 /* ===================================================================== */

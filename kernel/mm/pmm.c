@@ -14,9 +14,9 @@
 #define MAX_ORDER           11      /* Maximum order (2^11 = 2048 pages = 8MB) */
 #define BUDDY_MAX_PAGES     (1UL << MAX_ORDER)
 
-/* Initial memory layout - will be updated from DTB/UEFI */
-#define MEMORY_BASE         0x40000000  /* 1GB - typical for ARM64 */
-#define MEMORY_SIZE         (1024UL * 1024 * 1024) /* 1GB - matches current VMM map */
+/* Initial memory layout - may be overridden from DTB/UEFI */
+#define MEMORY_BASE         0x40000000UL /* 1GB - typical for ARM64 */
+#define MEMORY_SIZE         (1024UL * 1024 * 1024) /* Safe default within current VMM map */
 
 /* ===================================================================== */
 /* Static data */
@@ -39,6 +39,8 @@ static phys_addr_t memory_end;
 #define EARLY_BITMAP_SIZE   ((MEMORY_SIZE / PAGE_SIZE) / 8)
 static uint8_t early_bitmap[EARLY_BITMAP_SIZE];
 static bool early_mode = true;
+static phys_addr_t configured_memory_base = MEMORY_BASE;
+static size_t configured_memory_size = MEMORY_SIZE;
 
 /* ===================================================================== */
 /* Helper functions */
@@ -147,6 +149,16 @@ static phys_addr_t buddy_remove_from_list(unsigned int order)
 /* Public functions */
 /* ===================================================================== */
 
+void pmm_set_memory_range(phys_addr_t base, size_t size)
+{
+    if (!base || !size) {
+        return;
+    }
+
+    configured_memory_base = base;
+    configured_memory_size = size;
+}
+
 int pmm_init(void)
 {
     printk("PMM: Starting init\n");
@@ -154,9 +166,9 @@ int pmm_init(void)
     /* For now, use hardcoded memory range */
     /* TODO: Parse device tree or UEFI memory map */
     
-    memory_start = MEMORY_BASE;
-    memory_end = MEMORY_BASE + MEMORY_SIZE;
-    total_memory = MEMORY_SIZE;
+    memory_start = configured_memory_base;
+    memory_end = configured_memory_base + configured_memory_size;
+    total_memory = configured_memory_size;
     total_pages = total_memory / PAGE_SIZE;
     
     printk("PMM: Memory configured\n");

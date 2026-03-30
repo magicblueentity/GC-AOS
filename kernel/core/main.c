@@ -32,6 +32,100 @@ static void print_banner(void);
 static void init_subsystems(void *dtb);
 static void start_init_process(void);
 
+static uint32_t dtb_be32(const uint8_t *p) {
+  return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) |
+         (uint32_t)p[3];
+}
+
+static uint64_t dtb_be64(const uint8_t *p) {
+  return ((uint64_t)dtb_be32(p) << 32) | dtb_be32(p + 4);
+}
+
+static int str_starts_with_local(const char *s, const char *prefix) {
+  while (*prefix) {
+    if (*s++ != *prefix++)
+      return 0;
+  }
+  return 1;
+}
+
+static void dtb_configure_memory(void *dtb) {
+  const uint32_t FDT_MAGIC = 0xD00DFEED;
+  const uint32_t FDT_BEGIN_NODE = 1;
+  const uint32_t FDT_END_NODE = 2;
+  const uint32_t FDT_PROP = 3;
+  const uint32_t FDT_END = 9;
+  const size_t VMM_RAM_LIMIT = 1024UL * 1024 * 1024;
+  const uint8_t *blob = (const uint8_t *)dtb;
+  if (!blob)
+    return;
+
+  if (dtb_be32(blob) != FDT_MAGIC) {
+    printk(KERN_WARNING "DTB: Invalid header, using default RAM size\n");
+    return;
+  }
+
+  uint32_t struct_off = dtb_be32(blob + 8);
+  uint32_t strings_off = dtb_be32(blob + 12);
+  uint32_t struct_size = dtb_be32(blob + 36);
+  const uint8_t *p = blob + struct_off;
+  const uint8_t *end = p + struct_size;
+  const char *strings = (const char *)(blob + strings_off);
+  int in_memory_node = 0;
+  int depth = 0;
+
+  while (p + 4 <= end) {
+    uint32_t token = dtb_be32(p);
+    p += 4;
+
+    if (token == FDT_BEGIN_NODE) {
+      const char *name = (const char *)p;
+      size_t len = 0;
+      while (p + len < end && name[len])
+        len++;
+      if (depth == 1 && str_starts_with_local(name, "memory@")) {
+        in_memory_node = 1;
+      }
+      len++;
+      p += (len + 3) & ~3U;
+      depth++;
+    } else if (token == FDT_END_NODE) {
+      if (in_memory_node && depth == 2) {
+        in_memory_node = 0;
+      }
+      if (depth > 0)
+        depth--;
+    } else if (token == FDT_PROP) {
+      if (p + 8 > end)
+        break;
+      uint32_t len = dtb_be32(p);
+      uint32_t nameoff = dtb_be32(p + 4);
+      p += 8;
+      const char *prop_name = strings + nameoff;
+      if (in_memory_node && len >= 16 && prop_name &&
+          prop_name[0] == 'r' && prop_name[1] == 'e' && prop_name[2] == 'g' &&
+          prop_name[3] == '\0') {
+        uint64_t base = dtb_be64(p);
+        uint64_t size = dtb_be64(p + 8);
+        if (base && size) {
+          size_t usable = (size > VMM_RAM_LIMIT) ? VMM_RAM_LIMIT : (size_t)size;
+          pmm_set_memory_range((phys_addr_t)base, usable);
+          printk(KERN_INFO "DTB: RAM detected at 0x%llx size %llu MB%s\n",
+                 (unsigned long long)base,
+                 (unsigned long long)(size / (1024 * 1024)),
+                 (size > VMM_RAM_LIMIT) ? " (clamped to 1024 MB)" : "");
+          return;
+        }
+      }
+      p += (len + 3) & ~3U;
+    } else if (token == FDT_END) {
+      break;
+    } else {
+      /* Ignore NOP/unknown tokens. */
+    }
+  }
+}
+
 /*
  * kernel_main - Main kernel entry point
  * @dtb: Pointer to device tree blob passed by bootloader
@@ -92,7 +186,7 @@ static void init_subsystems(void *dtb) {
 
   /* Parse device tree for hardware information */
   printk(KERN_INFO "  Parsing device tree...\n");
-  (void)dtb; /* TODO: dtb_parse(dtb); */
+  dtb_configure_memory(dtb);
 
   /* Initialize interrupt controller */
   printk(KERN_INFO "  Initializing interrupt controller...\n");

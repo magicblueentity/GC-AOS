@@ -75,6 +75,7 @@ struct page {
  * Return: 0 on success, negative on error
  */
 int pmm_init(void);
+void pmm_set_memory_range(phys_addr_t base, size_t size);
 
 /**
  * pmm_alloc_page - Allocate a single physical page
