@@ -487,9 +487,6 @@ void desktop_show_context_menu(int x, int y, int on_icon) {
   ctx_menu.hover_index = -1;
   ctx_menu.visible = 1;
 
-  printk(KERN_INFO "MENU: Showing context menu at %d,%d visible=%d\n", x, y,
-         ctx_menu.visible);
-
   if (on_icon) {
     /* Context menu for selected file/folder - only working items */
     ctx_menu_add_item("Open", menu_action_open, 1);
@@ -649,9 +646,10 @@ int desktop_context_menu_hover(int mx, int my) {
   if (old_hover != ctx_menu.hover_index) {
     desktop_mark_dirty(ctx_menu.x, ctx_menu.y, ctx_menu.width + 4,
                        ctx_menu.height + 4);
+    return 1;
   }
 
-  return ctx_menu.visible;
+  return 0;
 }
 
 /* ===================================================================== */

@@ -11,6 +11,7 @@
 #include "icons.h"           /* Icon bitmaps */
 #include "media/media.h"
 #include "mm/kmalloc.h"
+#include "mm/pmm.h"
 #include "printk.h"
 #include "toolbar_icons.h" /* Toolbar icons for image viewer */
 #include "types.h"
@@ -524,49 +525,142 @@ struct display {
 
 static struct display primary_display = {0};
 
+static int gui_append_str(char *buf, int pos, int max, const char *text) {
+  while (*text && pos < max - 1) {
+    buf[pos++] = *text++;
+  }
+  buf[pos] = '\0';
+  return pos;
+}
+
+static int gui_append_u64(char *buf, int pos, int max, uint64_t value) {
+  char tmp[32];
+  int len = 0;
+
+  if (value == 0) {
+    if (pos < max - 1) {
+      buf[pos++] = '0';
+      buf[pos] = '\0';
+    }
+    return pos;
+  }
+
+  while (value > 0 && len < (int)sizeof(tmp)) {
+    tmp[len++] = '0' + (value % 10);
+    value /= 10;
+  }
+  while (len > 0 && pos < max - 1) {
+    buf[pos++] = tmp[--len];
+  }
+  buf[pos] = '\0';
+  return pos;
+}
+
+static void gui_format_memory_line(char *buf, int max, const char *label,
+                                   size_t bytes) {
+  int pos = 0;
+  size_t mib = bytes / (1024 * 1024);
+  pos = gui_append_str(buf, pos, max, label);
+  pos = gui_append_str(buf, pos, max, "  ");
+  pos = gui_append_u64(buf, pos, max, mib);
+  gui_append_str(buf, pos, max, " MB");
+}
+
 /* ===================================================================== */
 /* Basic Drawing Functions */
 /* ===================================================================== */
 
-static inline void draw_pixel(int x, int y, uint32_t color) {
-  if (x < 0 || x >= (int)primary_display.width)
-    return;
-  if (y < 0 || y >= (int)primary_display.height)
-    return;
+static uint32_t *gui_render_target = NULL;
+static int gui_render_width = 0;
+static int gui_render_height = 0;
+static int gui_render_pitch = 0;
+static int gui_render_origin_x = 0;
+static int gui_render_origin_y = 0;
 
-  uint32_t *target = primary_display.backbuffer ? primary_display.backbuffer
-                                                : primary_display.framebuffer;
+static inline uint32_t *gui_get_target_buffer(void) {
+  if (gui_render_target) {
+    return gui_render_target;
+  }
+  return primary_display.backbuffer ? primary_display.backbuffer
+                                    : primary_display.framebuffer;
+}
+
+static inline int gui_get_target_width(void) {
+  return gui_render_target ? gui_render_width : (int)primary_display.width;
+}
+
+static inline int gui_get_target_height(void) {
+  return gui_render_target ? gui_render_height : (int)primary_display.height;
+}
+
+static inline int gui_get_target_pitch(void) {
+  return gui_render_target ? gui_render_pitch : (int)(primary_display.pitch / 4);
+}
+
+static inline void gui_begin_surface(uint32_t *buffer, int width, int height,
+                                     int pitch, int origin_x, int origin_y) {
+  gui_render_target = buffer;
+  gui_render_width = width;
+  gui_render_height = height;
+  gui_render_pitch = pitch;
+  gui_render_origin_x = origin_x;
+  gui_render_origin_y = origin_y;
+}
+
+static inline void gui_end_surface(void) {
+  gui_render_target = NULL;
+  gui_render_width = 0;
+  gui_render_height = 0;
+  gui_render_pitch = 0;
+  gui_render_origin_x = 0;
+  gui_render_origin_y = 0;
+}
+
+static inline void draw_pixel(int x, int y, uint32_t color) {
+  int tx = x - gui_render_origin_x;
+  int ty = y - gui_render_origin_y;
+  int width = gui_get_target_width();
+  int height = gui_get_target_height();
+  uint32_t *target = gui_get_target_buffer();
+
+  if (tx < 0 || tx >= width)
+    return;
+  if (ty < 0 || ty >= height)
+    return;
   if (target) {
-    target[y * (primary_display.pitch / 4) + x] = color;
+    target[ty * gui_get_target_pitch() + tx] = color;
   }
 }
 
 void gui_draw_rect(int x, int y, int w, int h, uint32_t color) {
-  uint32_t *target = primary_display.backbuffer ? primary_display.backbuffer
-                                                : primary_display.framebuffer;
+  uint32_t *target = gui_get_target_buffer();
+  int width = gui_get_target_width();
+  int height = gui_get_target_height();
+  int tx = x - gui_render_origin_x;
+  int ty = y - gui_render_origin_y;
   if (!target || w <= 0 || h <= 0)
     return;
 
-  if (x < 0) {
-    w += x;
-    x = 0;
+  if (tx < 0) {
+    w += tx;
+    tx = 0;
   }
-  if (y < 0) {
-    h += y;
-    y = 0;
+  if (ty < 0) {
+    h += ty;
+    ty = 0;
   }
-  if (x >= (int)primary_display.width || y >= (int)primary_display.height)
+  if (tx >= width || ty >= height)
     return;
-  if (x + w > (int)primary_display.width)
-    w = primary_display.width - x;
-  if (y + h > (int)primary_display.height)
-    h = primary_display.height - y;
+  if (tx + w > width)
+    w = width - tx;
+  if (ty + h > height)
+    h = height - ty;
   if (w <= 0 || h <= 0)
     return;
 
-  int pitch_pixels = primary_display.pitch / 4;
+  int pitch_pixels = gui_get_target_pitch();
   for (int row = 0; row < h; row++) {
-    uint32_t *dst = target + (y + row) * pitch_pixels + x;
+    uint32_t *dst = target + (ty + row) * pitch_pixels + tx;
     for (int col = 0; col < w; col++) {
       dst[col] = color;
     }
@@ -649,34 +743,51 @@ void gui_draw_circle(int cx, int cy, int r, uint32_t color, bool filled) {
 extern const uint8_t font_data[256][16];
 
 void gui_draw_char(int x, int y, char c, uint32_t fg, uint32_t bg) {
+  uint32_t *target;
+  int pitch_pixels;
+  int tx = x - gui_render_origin_x;
+  int ty = y - gui_render_origin_y;
+  int width = gui_get_target_width();
+  int height = gui_get_target_height();
+
   /* Clip to screen bounds */
-  if (x < 0 || x + FONT_WIDTH > (int)primary_display.width || y < 0 ||
-      y + FONT_HEIGHT > (int)primary_display.height) {
+  if (tx < 0 || tx + FONT_WIDTH > width || ty < 0 ||
+      ty + FONT_HEIGHT > height) {
     return;
   }
+
+  target = gui_get_target_buffer();
+  if (!target) {
+    return;
+  }
+  pitch_pixels = gui_get_target_pitch();
 
   unsigned char idx = (unsigned char)c;
   const uint8_t *glyph = font_data[idx];
 
   for (int row = 0; row < FONT_HEIGHT; row++) {
     uint8_t line = glyph[row];
+    uint32_t *dst = target + (ty + row) * pitch_pixels + tx;
     for (int col = 0; col < FONT_WIDTH; col++) {
-      uint32_t color = (line & (0x80 >> col)) ? fg : bg;
-      draw_pixel(x + col, y + row, color);
+      dst[col] = (line & (0x80 >> col)) ? fg : bg;
     }
   }
 }
 
 void gui_draw_string(int x, int y, const char *str, uint32_t fg, uint32_t bg) {
   int start_x = x;
+  int width = gui_get_target_width();
+  int height = gui_get_target_height();
   while (*str) {
     if (*str == '\n') {
       x = start_x;
       y += FONT_HEIGHT;
     } else {
       /* Only draw if within screen bounds */
-      if (x >= 0 && x + FONT_WIDTH <= (int)primary_display.width && y >= 0 &&
-          y + FONT_HEIGHT <= (int)primary_display.height) {
+      int tx = x - gui_render_origin_x;
+      int ty = y - gui_render_origin_y;
+      if (tx >= 0 && tx + FONT_WIDTH <= width && ty >= 0 &&
+          ty + FONT_HEIGHT <= height) {
         gui_draw_char(x, y, *str, fg, bg);
       }
       x += FONT_WIDTH;
@@ -711,6 +822,9 @@ struct window {
   bool has_titlebar;
   bool resizable;
   uint32_t *content_buffer;
+  int surface_width;
+  int surface_height;
+  bool surface_dirty;
   void *userdata;
 
   /* Saved position for restore from maximize */
@@ -730,6 +844,110 @@ static struct window windows[MAX_WINDOWS];
 static struct window *window_stack = NULL; /* Z-order, top is focused */
 static struct window *focused_window = NULL;
 static int next_window_id = 1;
+static struct window *dragging_window = 0;
+static struct window *resizing_window = 0;
+
+void compositor_mark_full_redraw(void);
+
+static void gui_mark_window_dirty(struct window *win) {
+  if (!win) {
+    return;
+  }
+  win->surface_dirty = true;
+  compositor_mark_full_redraw();
+}
+
+static int gui_ensure_window_surface(struct window *win) {
+  uint32_t *new_surface;
+
+  if (!win) {
+    return -1;
+  }
+  if (win->content_buffer && win->surface_width == win->width &&
+      win->surface_height == win->height) {
+    return 0;
+  }
+
+  new_surface = kmalloc(win->width * win->height * 4);
+  if (!new_surface) {
+    return -1;
+  }
+
+  if (win->content_buffer) {
+    kfree(win->content_buffer);
+  }
+
+  win->content_buffer = new_surface;
+  win->surface_width = win->width;
+  win->surface_height = win->height;
+  win->surface_dirty = true;
+  return 0;
+}
+
+static void gui_blit_window_surface(struct window *win) {
+  int src_x = 0;
+  int src_y = 0;
+  int dst_x;
+  int dst_y;
+  int copy_w;
+  int copy_h;
+  int dst_pitch;
+  uint32_t *dst;
+  uint32_t *src;
+
+  if (!win || !win->content_buffer || !primary_display.backbuffer) {
+    return;
+  }
+
+  dst_x = win->x;
+  dst_y = win->y;
+  copy_w = win->width;
+  copy_h = win->height;
+
+  if (dst_x < 0) {
+    src_x = -dst_x;
+    copy_w += dst_x;
+    dst_x = 0;
+  }
+  if (dst_y < 0) {
+    src_y = -dst_y;
+    copy_h += dst_y;
+    dst_y = 0;
+  }
+  if (dst_x + copy_w > (int)primary_display.width) {
+    copy_w = primary_display.width - dst_x;
+  }
+  if (dst_y + copy_h > (int)primary_display.height) {
+    copy_h = primary_display.height - dst_y;
+  }
+  if (copy_w <= 0 || copy_h <= 0) {
+    return;
+  }
+
+  dst_pitch = primary_display.pitch / 4;
+  for (int row = 0; row < copy_h; row++) {
+    dst = primary_display.backbuffer + (dst_y + row) * dst_pitch + dst_x;
+    src = win->content_buffer + (src_y + row) * win->surface_width + src_x;
+    for (int col = 0; col < copy_w; col++) {
+      dst[col] = src[col];
+    }
+  }
+}
+
+static int window_title_starts_with(const struct window *win,
+                                    const char *prefix) {
+  int i = 0;
+  if (!win || !prefix) {
+    return 0;
+  }
+  while (prefix[i]) {
+    if (win->title[i] != prefix[i]) {
+      return 0;
+    }
+    i++;
+  }
+  return 1;
+}
 
 /* Create a new window */
 struct window *gui_create_window(const char *title, int x, int y, int w,
@@ -769,11 +987,12 @@ struct window *gui_create_window(const char *title, int x, int y, int w,
   win->on_key = NULL;
   win->on_close = NULL;
   win->userdata = NULL;
+  win->surface_width = w;
+  win->surface_height = h;
+  win->surface_dirty = true;
 
-  /* Allocate content buffer */
-  int content_h = h - TITLEBAR_HEIGHT - BORDER_WIDTH * 2;
-  int content_w = w - BORDER_WIDTH * 2;
-  win->content_buffer = kmalloc(content_w * content_h * 4);
+  /* Allocate full window surface */
+  win->content_buffer = kmalloc(w * h * 4);
 
   /* Add to stack */
   win->next = window_stack;
@@ -819,9 +1038,12 @@ void gui_destroy_window(struct window *win) {
 }
 
 void gui_focus_window(struct window *win) {
+  struct window *previous_focus;
+
   if (!win)
     return;
 
+  previous_focus = focused_window;
   if (focused_window) {
     focused_window->focused = false;
   }
@@ -841,6 +1063,8 @@ void gui_focus_window(struct window *win) {
 
   win->focused = true;
   focused_window = win;
+  gui_mark_window_dirty(previous_focus);
+  gui_mark_window_dirty(win);
 }
 
 /* Draw a filled circle (for traffic light buttons) */
@@ -1577,9 +1801,18 @@ static void gui_play_mp3_file(const char *path) {
 }
 
 static void draw_window(struct window *win) {
-  // ... rest of function ...
   if (!win->visible)
     return;
+  if (gui_ensure_window_surface(win) < 0)
+    return;
+
+  if (!win->surface_dirty) {
+    gui_blit_window_surface(win);
+    return;
+  }
+
+  gui_begin_surface(win->content_buffer, win->width, win->height,
+                    win->surface_width, win->x, win->y);
 
   int x = win->x, y = win->y;
   int w = win->width, h = win->height;
@@ -1651,6 +1884,18 @@ static void draw_window(struct window *win) {
       h - BORDER_WIDTH * 2 - (win->has_titlebar ? TITLEBAR_HEIGHT : 0);
 
   gui_draw_rect(content_x, content_y, content_w, content_h, THEME_BG);
+
+  /* While dragging/resizing, skip heavy app redraw and use a lightweight preview. */
+  if (resizing_window == win) {
+    gui_draw_rect_outline(content_x + 6, content_y + 6, content_w - 12,
+                          content_h - 12, 0x4B5563, 1);
+    gui_draw_string(content_x + 12, content_y + 12, "Resizing window...",
+                    0x9CA3AF, THEME_BG);
+    gui_end_surface();
+    win->surface_dirty = false;
+    gui_blit_window_surface(win);
+    return;
+  }
 
   /* Draw window-specific content based on title */
   /* Calculator - Modern Design */
@@ -1935,8 +2180,9 @@ static void draw_window(struct window *win) {
     gui_draw_string(content_x + 30, yy, "Kernel:        GC Kernel 0.5",
                     0xCDD6F4, 0x252535);
     yy += 18;
-    gui_draw_string(content_x + 30, yy, "Memory:        1024 MB", 0xCDD6F4,
-                    0x252535);
+    char memory_line[48];
+    gui_format_memory_line(memory_line, sizeof(memory_line), "Memory:", pmm_get_total_memory());
+    gui_draw_string(content_x + 30, yy, memory_line, 0xCDD6F4, 0x252535);
     yy += 18;
     gui_draw_string(content_x + 30, yy, "Display:       1920 x 1080", 0xCDD6F4,
                     0x252535);
@@ -2508,6 +2754,10 @@ static void draw_window(struct window *win) {
       gui_draw_line(gx + offset, gy + 10, gx + 10, gy + offset, grip_color);
     }
   }
+
+  gui_end_surface();
+  win->surface_dirty = false;
+  gui_blit_window_surface(win);
 }
 
 /* ===================================================================== */
@@ -2518,18 +2768,18 @@ static void draw_window(struct window *win) {
 static int menu_open = 0; /* 0=closed, 1=Apple menu open */
 
 static void draw_menu_bar(void) {
+  static int cached_hours = -1;
+  static int cached_mins = -1;
+  static char time_str[6] = "00:00";
+
   /* Glossy menu bar - gradient from dark to slightly lighter */
   for (int y = 0; y < MENU_BAR_HEIGHT; y++) {
     int brightness = 45 + (y * 10) / MENU_BAR_HEIGHT; /* 45 to 55 */
     uint32_t color = (brightness << 16) | (brightness << 8) | (brightness + 5);
-    for (int x = 0; x < (int)primary_display.width; x++) {
-      draw_pixel(x, y, color);
-    }
+    gui_draw_rect(0, y, primary_display.width, 1, color);
   }
   /* Bottom highlight line */
-  for (int x = 0; x < (int)primary_display.width; x++) {
-    draw_pixel(x, MENU_BAR_HEIGHT - 1, 0x606060);
-  }
+  gui_draw_rect(0, MENU_BAR_HEIGHT - 1, primary_display.width, 1, 0x606060);
 
   /* Apple logo (using @ as placeholder, bold white) */
   gui_draw_string(14, 6, "@", 0xFFFFFF, 0x2D2D35);
@@ -2551,13 +2801,16 @@ static void draw_menu_bar(void) {
     int hrs = (secs / 3600) % 24;
     int mins = (secs / 60) % 60;
 
-    char time_str[6];
-    time_str[0] = '0' + (hrs / 10);
-    time_str[1] = '0' + (hrs % 10);
-    time_str[2] = ':';
-    time_str[3] = '0' + (mins / 10);
-    time_str[4] = '0' + (mins % 10);
-    time_str[5] = '\0';
+    if (hrs != cached_hours || mins != cached_mins) {
+      cached_hours = hrs;
+      cached_mins = mins;
+      time_str[0] = '0' + (hrs / 10);
+      time_str[1] = '0' + (hrs % 10);
+      time_str[2] = ':';
+      time_str[3] = '0' + (mins / 10);
+      time_str[4] = '0' + (mins % 10);
+      time_str[5] = '\0';
+    }
 
     gui_draw_string(primary_display.width - 52, 6, time_str, 0xFFFFFF,
                     0x3E3E55);
@@ -2634,6 +2887,30 @@ static const char *dock_labels[] = {"Term",  "Files", "Calc",  "Notes", "Set",
 #define DOCK_ICON_SIZE 44  /* Slightly smaller for more icons */
 #define DOCK_ICON_MARGIN 4 /* Padding inside dock pill */
 #define DOCK_PADDING 8     /* Space between icons */
+
+static int gui_get_dock_hover_index_at(int x, int y) {
+  int dock_content_w =
+      NUM_DOCK_ICONS * (DOCK_ICON_SIZE + DOCK_PADDING) - DOCK_PADDING + 32;
+  int dock_x = (primary_display.width - dock_content_w) / 2;
+  int dock_y = primary_display.height - DOCK_HEIGHT + 6;
+  int dock_h = DOCK_HEIGHT - 12;
+
+  if (y < dock_y || y >= dock_y + dock_h) {
+    return -1;
+  }
+
+  int icon_x = dock_x + 16;
+  int icon_y = dock_y + (dock_h - DOCK_ICON_SIZE) / 2;
+  for (int i = 0; i < NUM_DOCK_ICONS; i++) {
+    if (x >= icon_x && x < icon_x + DOCK_ICON_SIZE && y >= icon_y &&
+        y < icon_y + DOCK_ICON_SIZE) {
+      return i;
+    }
+    icon_x += DOCK_ICON_SIZE + DOCK_PADDING;
+  }
+
+  return -1;
+}
 
 /* Draw a 32x32 bitmap icon scaled to display size */
 static void draw_icon(int x, int y, int size, const unsigned char *bitmap,
@@ -2822,68 +3099,13 @@ static void draw_icon_web(int x, int y, int size) {
   gui_draw_rect(cx - 1, cy - r + 2, 3, r * 2 - 4, 0x3399FF);
 }
 
-/* Draw dock with hover animations - using vector icons */
+/* Draw dock with fixed icon geometry to keep pointer movement cheap. */
 static void draw_dock(void) {
-  int mouse_active = (mouse_y >= primary_display.height - DOCK_HEIGHT - 40);
-
-  /* 1. Calculate target sizes for all icons based on magnification */
-  int icon_sizes[NUM_DOCK_ICONS];
-  static int smooth_sizes[NUM_DOCK_ICONS] = {0};
-
-  /* Initial base positions for hit testing (fixed grid for stability) */
-  int base_dock_w =
-      NUM_DOCK_ICONS * (DOCK_ICON_SIZE + DOCK_PADDING) - DOCK_PADDING + 32;
-  int base_dock_x = (primary_display.width - base_dock_w) / 2;
+  int hovered_idx = gui_get_dock_hover_index_at(mouse_x, mouse_y);
+  int total_content_w =
+      NUM_DOCK_ICONS * (DOCK_ICON_SIZE + DOCK_PADDING) - DOCK_PADDING;
   int base_y = primary_display.height - DOCK_HEIGHT + 6;
-
-  int max_magnify = 42;    /* Max magnify */
-  int magnify_range = 140; /* Wider range for wave */
-  int hovered_idx = -1;
-
-  for (int i = 0; i < NUM_DOCK_ICONS; i++) {
-    int target = DOCK_ICON_SIZE;
-    /* Use fixed base positions for hit test stability so icons don't run away
-     */
-    int base_center_x = base_dock_x + 16 + i * (DOCK_ICON_SIZE + DOCK_PADDING) +
-                        DOCK_ICON_SIZE / 2;
-
-    if (mouse_active) {
-      int dist = mouse_x - base_center_x;
-      if (dist < 0)
-        dist = -dist;
-
-      if (dist < magnify_range) {
-        /* Sine wave magnification: scale = (1 - dist/range)^2 */
-        int scale = (magnify_range - dist) * 256 / magnify_range;
-        scale = scale * scale / 256; /* Quadratic ease */
-        target += max_magnify * scale / 256;
-
-        if (dist < DOCK_ICON_SIZE / 2 + 5)
-          hovered_idx = i;
-      }
-    }
-
-    /* Smooth interpolation */
-    if (smooth_sizes[i] == 0)
-      smooth_sizes[i] = DOCK_ICON_SIZE;
-    int diff = target - smooth_sizes[i];
-    if (diff > 0)
-      smooth_sizes[i] += (diff > 8) ? 8 : diff;
-    else if (diff < 0)
-      smooth_sizes[i] += (diff < -8) ? -8 : diff;
-
-    icon_sizes[i] = smooth_sizes[i];
-  }
-
-  /* 2. Calculate dynamic total width */
-  int total_content_w = 0;
-  for (int i = 0; i < NUM_DOCK_ICONS; i++) {
-    total_content_w += icon_sizes[i];
-    if (i < NUM_DOCK_ICONS - 1)
-      total_content_w += DOCK_PADDING;
-  }
-  int dock_content_w = total_content_w; /* Used by old code too */
-  int dock_w = total_content_w + 32;    /* Padding */
+  int dock_w = total_content_w + 32;
   int dock_h = DOCK_HEIGHT - 12;
   int dock_x = (primary_display.width - dock_w) / 2;
   int dock_y = base_y;
@@ -2898,46 +3120,27 @@ static void draw_dock(void) {
     draw_pixel(i, dock_y + dock_h - 1, 0x14141A);
   }
 
-  /* 4. Determine Draw Order (Small -> Large) so large icons draw ON TOP of
-   * neighbors */
-  int draw_order[NUM_DOCK_ICONS];
-  for (int i = 0; i < NUM_DOCK_ICONS; i++)
-    draw_order[i] = i;
-
-  /* Bubble sort by size (stable) */
-  for (int i = 0; i < NUM_DOCK_ICONS - 1; i++) {
-    for (int j = 0; j < NUM_DOCK_ICONS - i - 1; j++) {
-      if (icon_sizes[draw_order[j]] > icon_sizes[draw_order[j + 1]]) {
-        int temp = draw_order[j];
-        draw_order[j] = draw_order[j + 1];
-        draw_order[j + 1] = temp;
-      }
-    }
-  }
-
-  /* 5. Draw Icons */
+  /* 4. Draw Icons in fixed positions. */
   int center_y = dock_y + dock_h / 2;
   int curr_x = dock_x + 16;
-
-  /* Calculate render centers first - strictly left-to-right based on dynamic
-   * width */
   int render_centers[NUM_DOCK_ICONS];
   for (int i = 0; i < NUM_DOCK_ICONS; i++) {
-    render_centers[i] = curr_x + icon_sizes[i] / 2;
-    curr_x += icon_sizes[i] + DOCK_PADDING;
+    render_centers[i] = curr_x + DOCK_ICON_SIZE / 2;
+    curr_x += DOCK_ICON_SIZE + DOCK_PADDING;
   }
 
-  for (int k = 0; k < NUM_DOCK_ICONS; k++) {
-    int i = draw_order[k]; /* Draw in sorted order */
-    int size = icon_sizes[i];
+  for (int i = 0; i < NUM_DOCK_ICONS; i++) {
+    int size = DOCK_ICON_SIZE;
     int cx = render_centers[i];
-    int cy = center_y - (size - DOCK_ICON_SIZE) / 2; /* Move up as it grows */
-
+    int cy = center_y;
     int draw_x = cx - size / 2;
     int draw_y = cy - size / 2;
 
     int icon_r = size / 5;
     uint32_t bg_color = icon_colors[i];
+    if (i == hovered_idx) {
+      bg_color += 0x101010;
+    }
 
     /* Icon Background */
     gui_draw_rect(draw_x + icon_r, draw_y, size - 2 * icon_r, size, bg_color);
@@ -3025,6 +3228,8 @@ static uint32_t *cached_desktop_scene = NULL;
 static int cached_desktop_scene_w = 0;
 static int cached_desktop_scene_h = 0;
 static int desktop_scene_cached = 0;
+
+static inline void fast_memcpy_line(uint32_t *dst, uint32_t *src, int width);
 
 /* Draw wallpaper - supports both gradients and JPEG images */
 static void draw_wallpaper(void) {
@@ -3136,9 +3341,7 @@ static void draw_desktop(void) {
     for (int y = 0; y < height; y++) {
       uint32_t *src = primary_display.backbuffer + y * pitch_pixels;
       uint32_t *dst = cached_desktop_scene + y * width;
-      for (int x = 0; x < width; x++) {
-        dst[x] = src[x];
-      }
+      fast_memcpy_line(dst, src, width);
     }
     desktop_scene_cached = 1;
   }
@@ -3147,9 +3350,7 @@ static void draw_desktop(void) {
     for (int y = 0; y < height; y++) {
       uint32_t *src = cached_desktop_scene + y * width;
       uint32_t *dst = primary_display.backbuffer + y * pitch_pixels;
-      for (int x = 0; x < width; x++) {
-        dst[x] = src[x];
-      }
+      fast_memcpy_line(dst, src, width);
     }
   } else {
     draw_wallpaper();
@@ -3257,9 +3458,29 @@ void gui_compose(void) {
 
   /* Update Snake game state (throttled) */
   static int snake_tick = 0;
-  if (++snake_tick >= 10) { /* Update every 10 frames */
+  int snake_visible = 0;
+  for (struct window *scan = window_stack; scan; scan = scan->next) {
+    if (scan->visible && window_title_starts_with(scan, "Snake")) {
+      snake_visible = 1;
+      break;
+    }
+  }
+  if (snake_visible && ++snake_tick >= 10) { /* Update every 10 frames */
     snake_tick = 0;
     snake_move();
+    for (struct window *scan = window_stack; scan; scan = scan->next) {
+      if (scan->visible && window_title_starts_with(scan, "Snake")) {
+        scan->surface_dirty = true;
+      }
+    }
+  } else if (!snake_visible) {
+    snake_tick = 0;
+  }
+
+  for (struct window *scan = window_stack; scan; scan = scan->next) {
+    if (scan->visible && window_title_starts_with(scan, "Clock")) {
+      scan->surface_dirty = true;
+    }
   }
 
   /* Draw windows from bottom to top (reverse order) */
@@ -3352,8 +3573,7 @@ static uint32_t cursor_saved_pixels[CURSOR_WIDTH * CURSOR_HEIGHT];
 static int cursor_saved_x = 0;
 static int cursor_saved_y = 0;
 static int cursor_saved_valid = 0;
-static struct window *dragging_window;
-static struct window *resizing_window;
+static int mouse_visual_dirty = 1;
 
 static void cursor_erase(void) {
   if (!cursor_saved_valid || !primary_display.framebuffer)
@@ -3421,14 +3641,25 @@ void gui_refresh_cursor(void) {
 }
 
 int gui_mouse_needs_full_redraw(void) {
-  extern int desktop_is_context_menu_visible(void);
+  static int last_dock_hover = -2;
+  static int last_menu_open = -1;
+  int dock_hover = gui_get_dock_hover_index_at(mouse_x, mouse_y);
+  int menu_state = menu_open;
 
-  if (desktop_is_context_menu_visible())
-    return 1;
   if (dragging_window || resizing_window)
     return 1;
-  if (mouse_y >= (int)primary_display.height - DOCK_HEIGHT - 40)
+  if (mouse_visual_dirty) {
+    mouse_visual_dirty = 0;
     return 1;
+  }
+  if (dock_hover != last_dock_hover) {
+    last_dock_hover = dock_hover;
+    return 1;
+  }
+  if (menu_state != last_menu_open) {
+    last_menu_open = menu_state;
+    return 1;
+  }
 
   return 0;
 }
@@ -3465,7 +3696,6 @@ void gui_handle_key_event(int key) {
         focused_window->title[2] == 'r') {
       /* Use file-scope terminal declarations */
       struct terminal *term = term_get_active();
-      printk("KEY: term_get_active=%p, key=%d\n", term, key);
       if (term) {
         term_handle_key(term, key);
       }
@@ -3519,6 +3749,7 @@ void gui_handle_key_event(int key) {
     if (focused_window->on_key) {
       focused_window->on_key(focused_window, key);
     }
+    gui_mark_window_dirty(focused_window);
   }
 }
 
@@ -3527,12 +3758,10 @@ void gui_handle_key_event(int key) {
 /* ===================================================================== */
 
 /* Dragging state */
-static struct window *dragging_window = 0;
 static int drag_offset_x = 0, drag_offset_y = 0;
 static int prev_buttons = 0;
 
 /* Resizing state */
-static struct window *resizing_window = 0;
 #define RESIZE_NONE 0
 #define RESIZE_RIGHT 1
 #define RESIZE_BOTTOM 2
@@ -3553,8 +3782,6 @@ static int resize_start_win_x = 0, resize_start_win_y = 0;
 #define MIN_WINDOW_HEIGHT 100
 
 void gui_handle_mouse_event(int x, int y, int buttons) {
-  int prev_x = mouse_x;
-  int prev_y = mouse_y;
   mouse_x = x;
   mouse_y = y;
 
@@ -3566,16 +3793,13 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
   /* Handle context menu hover - ALWAYS call when menu visible */
   int menu_vis = desktop_is_context_menu_visible();
   if (menu_vis) {
-    printk(KERN_INFO "MOUSE: Menu visible, calling hover at %d,%d\n", x, y);
-    desktop_context_menu_hover(x, y);
-    /* Force compositor to update */
-    extern void compositor_mark_full_redraw(void);
-    compositor_mark_full_redraw();
+    if (desktop_context_menu_hover(x, y)) {
+      mouse_visual_dirty = 1;
+    }
   }
 
   /* Track for double-click detection */
   static int last_click_x = 0, last_click_y = 0;
-  static uint64_t last_click_time = 0;
   static int click_count = 0;
 
   /* Handle window dragging */
@@ -3595,6 +3819,7 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
       dragging_window->x = 0;
     if (dragging_window->x > (int)primary_display.width - 100)
       dragging_window->x = primary_display.width - 100;
+    compositor_mark_full_redraw();
   }
 
   /* Handle window resizing */
@@ -3652,6 +3877,8 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
     resizing_window->y = new_y;
     resizing_window->width = new_w;
     resizing_window->height = new_h;
+    resizing_window->surface_dirty = true;
+    compositor_mark_full_redraw();
   }
 
   if (left_release) {
@@ -3664,7 +3891,6 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
 
   /* Handle desktop right-click (context menu) - check BEFORE left_click gate */
   if (right_click) {
-    printk(KERN_INFO "RIGHT-CLICK at %d,%d buttons=%d\n", x, y, buttons);
     /* Check if right-click is on desktop area (not on window, menu bar, or
      * dock) */
     int on_window = 0;
@@ -3680,8 +3906,6 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
 
     if (!on_window && y > MENU_BAR_HEIGHT &&
         y < (int)primary_display.height - DOCK_HEIGHT) {
-      printk(KERN_INFO
-             "RIGHT-CLICK on desktop, calling desktop_handle_click\n");
       /* Right-click on desktop - handle in desktop manager */
       desktop_handle_click(x, y, 2, 0); /* button 2 = right */
       return;
@@ -3705,25 +3929,20 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
       int dropdown_y = MENU_BAR_HEIGHT;
       int rel_y = y - dropdown_y;
 
-      printk("DROPDOWN CLICK: x=%d y=%d rel_y=%d\\n", x, y, rel_y);
-
       /* About Vib-OS (y+10) */
       if (rel_y >= 2 && rel_y < 32) {
-        printk("Opening About window\\n");
         gui_create_window("About", 280, 180, 420, 260);
         menu_open = 0;
         return;
       }
       /* Settings (y+40) */
       if (rel_y >= 32 && rel_y < 58) {
-        printk("Opening Settings window\\n");
         gui_create_window("Settings", 200, 120, 380, 320);
         menu_open = 0;
         return;
       }
       /* Restart (y+58) */
       if (rel_y >= 58 && rel_y < 80) {
-        printk("Restart requested\\n");
         extern void arch_halt(void);
         arch_halt();
         menu_open = 0;
@@ -3785,36 +4004,26 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
   /* Check menu bar and dropdown clicks */
   if (y < MENU_BAR_HEIGHT ||
       (menu_open && y < MENU_BAR_HEIGHT + 80 && x < 170)) {
-
-    printk("MENU DEBUG: x=%d y=%d menu_open=%d MBH=%d\\n", x, y, menu_open,
-           MENU_BAR_HEIGHT);
-
     /* If dropdown is open, check dropdown item clicks */
     if (menu_open == 1 && y >= MENU_BAR_HEIGHT && y < MENU_BAR_HEIGHT + 80 &&
         x >= 8 && x < 168) {
       int dropdown_y = MENU_BAR_HEIGHT;
       int rel_y = y - dropdown_y;
 
-      printk("MENU CLICK: x=%d y=%d rel_y=%d dropdown_y=%d\\n", x, y, rel_y,
-             dropdown_y);
-
       /* About Vib-OS (y+10) - expanded range */
       if (rel_y >= 2 && rel_y < 32) {
-        printk("MENU: Opening About window\\n");
         gui_create_window("About", 280, 180, 420, 260);
         menu_open = 0;
         return;
       }
       /* Settings (y+40) - expanded range */
       if (rel_y >= 32 && rel_y < 58) {
-        printk("MENU: Opening Settings window\\n");
         gui_create_window("Settings", 200, 120, 380, 320);
         menu_open = 0;
         return;
       }
       /* Restart (y+58) - expanded range */
       if (rel_y >= 58 && rel_y < 80) {
-        printk("MENU: Restart requested\\n");
         extern void arch_halt(void);
         arch_halt();
         menu_open = 0;
@@ -4032,6 +4241,7 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
 
       if (win->on_mouse) {
         win->on_mouse(win, x - win->x, y - win->y, buttons);
+        gui_mark_window_dirty(win);
       }
       break;
     }

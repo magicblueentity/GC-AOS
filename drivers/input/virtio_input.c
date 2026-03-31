@@ -289,6 +289,8 @@ static volatile uint32_t *find_virtio_tablet(void) {
 /* ===================================================================== */
 
 void mouse_poll(void) {
+  int processed = 0;
+
   if (!mouse_base || !used) {
     return;
   }
@@ -297,6 +299,7 @@ void mouse_poll(void) {
   uint16_t current_used = used->idx;
 
   while (last_used_idx != current_used) {
+    processed = 1;
     uint16_t idx = last_used_idx % QUEUE_SIZE;
     uint32_t desc_idx = used->ring[idx].id;
 
@@ -332,10 +335,12 @@ void mouse_poll(void) {
     last_used_idx++;
   }
 
-  /* Notify device */
-  mmio_write32(mouse_base + VIRTIO_MMIO_QUEUE_NOTIFY / 4, 0);
-  mmio_write32(mouse_base + VIRTIO_MMIO_INTERRUPT_ACK / 4,
-               mmio_read32(mouse_base + VIRTIO_MMIO_INTERRUPT_STATUS / 4));
+  if (processed) {
+    /* Only notify/ack when descriptors were actually consumed. */
+    mmio_write32(mouse_base + VIRTIO_MMIO_QUEUE_NOTIFY / 4, 0);
+    mmio_write32(mouse_base + VIRTIO_MMIO_INTERRUPT_ACK / 4,
+                 mmio_read32(mouse_base + VIRTIO_MMIO_INTERRUPT_STATUS / 4));
+  }
 }
 
 /* ===================================================================== */
@@ -343,8 +348,6 @@ void mouse_poll(void) {
 /* ===================================================================== */
 
 void mouse_get_position(int *x, int *y) {
-  mouse_poll();
-
   /* Scale from 0-32767 to screen dimensions */
   if (x)
     *x = (mouse_x * SCREEN_WIDTH) / 32768;
@@ -353,7 +356,6 @@ void mouse_get_position(int *x, int *y) {
 }
 
 int mouse_get_buttons(void) {
-  mouse_poll();
   return mouse_buttons;
 }
 
@@ -513,6 +515,8 @@ static volatile uint32_t *find_virtio_keyboard(void) {
 }
 
 static void keyboard_poll(void) {
+  int processed = 0;
+
   if (!kbd_base || !kbd_used) {
     return;
   }
@@ -521,6 +525,7 @@ static void keyboard_poll(void) {
   uint16_t current_used = kbd_used->idx;
 
   while (kbd_last_used_idx != current_used) {
+    processed = 1;
     uint16_t idx = kbd_last_used_idx % QUEUE_SIZE;
     uint32_t desc_idx = kbd_used->ring[idx].id;
 
@@ -610,10 +615,12 @@ static void keyboard_poll(void) {
     kbd_last_used_idx++;
   }
 
-  /* Notify device */
-  mmio_write32(kbd_base + VIRTIO_MMIO_QUEUE_NOTIFY / 4, 0);
-  mmio_write32(kbd_base + VIRTIO_MMIO_INTERRUPT_ACK / 4,
-               mmio_read32(kbd_base + VIRTIO_MMIO_INTERRUPT_STATUS / 4));
+  if (processed) {
+    /* Only notify/ack when descriptors were actually consumed. */
+    mmio_write32(kbd_base + VIRTIO_MMIO_QUEUE_NOTIFY / 4, 0);
+    mmio_write32(kbd_base + VIRTIO_MMIO_INTERRUPT_ACK / 4,
+                 mmio_read32(kbd_base + VIRTIO_MMIO_INTERRUPT_STATUS / 4));
+  }
 }
 
 static int keyboard_init(void) {

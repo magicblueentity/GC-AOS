@@ -159,6 +159,20 @@ static uint64_t *walk_page_table(uint64_t *pgd, virt_addr_t vaddr, bool allocate
 int vmm_init(void)
 {
     printk(KERN_INFO "VMM: Initializing virtual memory manager\n");
+    const uint64_t ram_block_size = 1ULL << VMM_LEVEL1_SHIFT;
+    const uint64_t ram_base = 0x40000000ULL;
+    size_t detected_memory = pmm_get_total_memory();
+    size_t ram_blocks = detected_memory / ram_block_size;
+
+    if (detected_memory % ram_block_size) {
+        ram_blocks++;
+    }
+    if (ram_blocks == 0) {
+        ram_blocks = 1;
+    }
+    if (ram_blocks > 4) {
+        ram_blocks = 4;
+    }
     
     /* Kernel PGD is a static array, already initialized */
     printk("VMM: Kernel PGD ready\n");
@@ -197,10 +211,9 @@ int vmm_init(void)
     
     printk("VMM: Memory attributes configured\n");
     
-    /* Create identity mapping for first 1GB (covers kernel and devices) */
-    /* Using 1GB block mappings at level 1 for efficiency */
+    /* Create identity mappings for MMIO + detected RAM using 1GB L1 blocks. */
     
-    /* Map 0x00000000-0x3FFFFFFF (first 1GB - RAM) as normal memory */
+    /* Create the first L1 table covering the low address space. */
     int idx0 = pte_index(0x00000000UL, 0);
     uint64_t *l1_table = alloc_page_table();
     if (!l1_table) {
@@ -213,9 +226,12 @@ int vmm_init(void)
     l1_table[0] = (0x00000000UL & PTE_ADDR_MASK) | 
                   PTE_VALID | PTE_BLOCK | PTE_ATTR_DEVICE | PTE_SH_NONE | PTE_ACCESSED;
     
-    /* Map 0x40000000-0x7FFFFFFF as normal memory (kernel load area) */
-    l1_table[1] = (0x40000000UL & PTE_ADDR_MASK) | 
-                  PTE_VALID | PTE_BLOCK | PTE_ATTR_NORMAL | PTE_SH_INNER | PTE_ACCESSED;
+    for (size_t i = 0; i < ram_blocks; i++) {
+        uint64_t block_base = ram_base + (i * ram_block_size);
+        l1_table[1 + i] = (block_base & PTE_ADDR_MASK) |
+                          PTE_VALID | PTE_BLOCK | PTE_ATTR_NORMAL |
+                          PTE_SH_INNER | PTE_ACCESSED;
+    }
     
     /* Map High PCI ECAM region (0x40_0000_0000) for 1GB (covers 0x40_1000_0000) */
     /* L1 index 256 (256GB) maps 0x40_0000_0000 - 0x40_3FFF_FFFF */
@@ -223,7 +239,8 @@ int vmm_init(void)
     l1_table[256] = (0x4000000000ULL & PTE_ADDR_MASK) | 
                     PTE_VALID | PTE_BLOCK | PTE_ATTR_DEVICE | PTE_SH_NONE | PTE_ACCESSED;
     
-    printk("VMM: RAM identity mapped (0-2GB) + High PCI ECAM (256GB base)\n");
+    printk("VMM: RAM identity mapped (%u GB from 0x%llx) + High PCI ECAM\n",
+           (unsigned int)ram_blocks, (unsigned long long)ram_base);
     
     /* Map device region 0x08000000-0x10000000 for GIC, UART etc */
     /* This is at L1 index 0, but we need L2 tables for finer control */

@@ -16,7 +16,8 @@
 
 /* Initial memory layout - may be overridden from DTB/UEFI */
 #define MEMORY_BASE         0x40000000UL /* 1GB - typical for ARM64 */
-#define MEMORY_SIZE         (1024UL * 1024 * 1024) /* Safe default within current VMM map */
+#define MEMORY_SIZE         (1024UL * 1024 * 1024) /* Safe default before DTB parsing */
+#define PMM_MAX_MEMORY_SIZE (4UL * 1024 * 1024 * 1024) /* Current ARM64/QEMU ceiling */
 
 /* ===================================================================== */
 /* Static data */
@@ -36,7 +37,7 @@ static phys_addr_t memory_start;
 static phys_addr_t memory_end;
 
 /* Bitmap for early page tracking before page_array is set up */
-#define EARLY_BITMAP_SIZE   ((MEMORY_SIZE / PAGE_SIZE) / 8)
+#define EARLY_BITMAP_SIZE   ((PMM_MAX_MEMORY_SIZE / PAGE_SIZE) / 8)
 static uint8_t early_bitmap[EARLY_BITMAP_SIZE];
 static bool early_mode = true;
 static phys_addr_t configured_memory_base = MEMORY_BASE;
@@ -153,6 +154,10 @@ void pmm_set_memory_range(phys_addr_t base, size_t size)
 {
     if (!base || !size) {
         return;
+    }
+
+    if (size > PMM_MAX_MEMORY_SIZE) {
+        size = PMM_MAX_MEMORY_SIZE;
     }
 
     configured_memory_base = base;

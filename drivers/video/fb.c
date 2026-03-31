@@ -79,11 +79,10 @@ static struct {
 void fb_clear(uint32_t color)
 {
     if (!framebuffer.initialized) return;
-    
-    for (uint32_t y = 0; y < framebuffer.height; y++) {
-        for (uint32_t x = 0; x < framebuffer.width; x++) {
-            framebuffer.buffer[y * framebuffer.width + x] = color;
-        }
+
+    uint32_t total = framebuffer.width * framebuffer.height;
+    for (uint32_t i = 0; i < total; i++) {
+        framebuffer.buffer[i] = color;
     }
 }
 
@@ -98,9 +97,26 @@ void fb_put_pixel(int x, int y, uint32_t color)
 
 void fb_fill_rect(int x, int y, int w, int h, uint32_t color)
 {
-    for (int row = y; row < y + h; row++) {
-        for (int col = x; col < x + w; col++) {
-            fb_put_pixel(col, row, color);
+    if (!framebuffer.initialized) return;
+    if (w <= 0 || h <= 0) return;
+
+    if (x < 0) {
+        w += x;
+        x = 0;
+    }
+    if (y < 0) {
+        h += y;
+        y = 0;
+    }
+    if (x >= (int)framebuffer.width || y >= (int)framebuffer.height) return;
+    if (x + w > (int)framebuffer.width) w = framebuffer.width - x;
+    if (y + h > (int)framebuffer.height) h = framebuffer.height - y;
+    if (w <= 0 || h <= 0) return;
+
+    for (int row = 0; row < h; row++) {
+        uint32_t *dst = framebuffer.buffer + (y + row) * framebuffer.width + x;
+        for (int col = 0; col < w; col++) {
+            dst[col] = color;
         }
     }
 }
@@ -128,12 +144,13 @@ static const uint8_t font_8x8[128][8] = {
 void fb_draw_char(int x, int y, char c, uint32_t fg, uint32_t bg)
 {
     if (c < 0 || c > 127) c = ' ';
+    if (!framebuffer.initialized) return;
     
     for (int row = 0; row < 8; row++) {
         uint8_t line = font_8x8[(int)c][row];
+        uint32_t *dst = framebuffer.buffer + (y + row) * framebuffer.width + x;
         for (int col = 0; col < 8; col++) {
-            uint32_t color = (line & (0x80 >> col)) ? fg : bg;
-            fb_put_pixel(x + col, y + row, color);
+            dst[col] = (line & (0x80 >> col)) ? fg : bg;
         }
     }
 }

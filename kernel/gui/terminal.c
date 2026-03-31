@@ -6,6 +6,7 @@
 
 #include "media/media.h"
 #include "mm/kmalloc.h"
+#include "mm/pmm.h"
 #include "printk.h"
 #include "types.h"
 
@@ -112,6 +113,41 @@ struct terminal {
 };
 
 static struct terminal *active_terminal = NULL;
+
+static int term_append_str(char *buf, int pos, int max, const char *text) {
+  while (*text && pos < max - 1) {
+    buf[pos++] = *text++;
+  }
+  buf[pos] = '\0';
+  return pos;
+}
+
+static int term_append_u64(char *buf, int pos, int max, uint64_t value) {
+  char tmp[32];
+  int len = 0;
+
+  if (value == 0) {
+    if (pos < max - 1) {
+      buf[pos++] = '0';
+      buf[pos] = '\0';
+    }
+    return pos;
+  }
+
+  while (value > 0 && len < (int)sizeof(tmp)) {
+    tmp[len++] = '0' + (value % 10);
+    value /= 10;
+  }
+  while (len > 0 && pos < max - 1) {
+    buf[pos++] = tmp[--len];
+  }
+  buf[pos] = '\0';
+  return pos;
+}
+
+static size_t term_bytes_to_mib(size_t bytes) {
+  return bytes / (1024 * 1024);
+}
 
 static void term_copy_cells(char *dst_chars, uint8_t *dst_fg, uint8_t *dst_bg,
                             const char *src_chars, const uint8_t *src_fg,
@@ -625,8 +661,24 @@ void term_execute_command(struct terminal *term, const char *cmd) {
   } else if (str_starts_with(cmd, "uptime")) {
     term_puts(term, " 21:35:00 up 0 min,  1 user,  load: 0.00, 0.00, 0.00\n");
   } else if (str_starts_with(cmd, "free")) {
+    char mem_line[96];
+    size_t total = pmm_get_total_memory();
+    size_t free_mem = pmm_get_free_memory();
+    size_t used = (total > free_mem) ? (total - free_mem) : 0;
+    int pos = 0;
+
     term_puts(term, "              total        used        free\n");
-    term_puts(term, "Mem:        1024 MB       64 MB      960 MB\n");
+    pos = term_append_str(mem_line, pos, sizeof(mem_line), "Mem:        ");
+    pos = term_append_u64(mem_line, pos, sizeof(mem_line),
+                          term_bytes_to_mib(total));
+    pos = term_append_str(mem_line, pos, sizeof(mem_line), " MB       ");
+    pos = term_append_u64(mem_line, pos, sizeof(mem_line),
+                          term_bytes_to_mib(used));
+    pos = term_append_str(mem_line, pos, sizeof(mem_line), " MB      ");
+    pos = term_append_u64(mem_line, pos, sizeof(mem_line),
+                          term_bytes_to_mib(free_mem));
+    term_append_str(mem_line, pos, sizeof(mem_line), " MB\n");
+    term_puts(term, mem_line);
     term_puts(term, "Swap:          0 MB        0 MB        0 MB\n");
   } else if (str_starts_with(cmd, "ps")) {
     term_puts(term, "  PID TTY          TIME CMD\n");
@@ -636,6 +688,12 @@ void term_execute_command(struct terminal *term, const char *cmd) {
   } else if (str_starts_with(cmd, "whoami")) {
     term_puts(term, "root\n");
   } else if (str_starts_with(cmd, "neofetch")) {
+    char mem_line[96];
+    size_t total = pmm_get_total_memory();
+    size_t free_mem = pmm_get_free_memory();
+    size_t used = (total > free_mem) ? (total - free_mem) : 0;
+    int pos = 0;
+
     term_puts(term, "\033[36m");
     term_puts(term, "\033[0m\n");
     term_puts(term, "\033[33mOS:\033[0m      GC AOS 0.5.0\n");
@@ -643,7 +701,14 @@ void term_execute_command(struct terminal *term, const char *cmd) {
     term_puts(term, "\033[33mKernel:\033[0m  0.5.0-arm64\n");
     term_puts(term, "\033[33mUptime:\033[0m  0 mins\n");
     term_puts(term, "\033[33mShell:\033[0m   vsh 1.0\n");
-    term_puts(term, "\033[33mMemory:\033[0m  64 MB / 1024 MB\n");
+    pos = term_append_str(mem_line, pos, sizeof(mem_line), "\033[33mMemory:\033[0m  ");
+    pos = term_append_u64(mem_line, pos, sizeof(mem_line),
+                          term_bytes_to_mib(used));
+    pos = term_append_str(mem_line, pos, sizeof(mem_line), " MB / ");
+    pos = term_append_u64(mem_line, pos, sizeof(mem_line),
+                          term_bytes_to_mib(total));
+    term_append_str(mem_line, pos, sizeof(mem_line), " MB\n");
+    term_puts(term, mem_line);
     term_puts(term, "\033[33mCPU:\033[0m     ARM Cortex-A72 (max)\n");
     term_puts(term, "\033[33mGPU:\033[0m     QEMU ramfb 1920x1080\n");
   } else if (str_starts_with(cmd, "exit")) {

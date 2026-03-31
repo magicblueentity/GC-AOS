@@ -55,7 +55,7 @@ static void dtb_configure_memory(void *dtb) {
   const uint32_t FDT_END_NODE = 2;
   const uint32_t FDT_PROP = 3;
   const uint32_t FDT_END = 9;
-  const size_t VMM_RAM_LIMIT = 1024UL * 1024 * 1024;
+  const size_t VMM_RAM_LIMIT = 4UL * 1024 * 1024 * 1024;
   const uint8_t *blob = (const uint8_t *)dtb;
   if (!blob)
     return;
@@ -113,7 +113,7 @@ static void dtb_configure_memory(void *dtb) {
           printk(KERN_INFO "DTB: RAM detected at 0x%llx size %llu MB%s\n",
                  (unsigned long long)base,
                  (unsigned long long)(size / (1024 * 1024)),
-                 (size > VMM_RAM_LIMIT) ? " (clamped to 1024 MB)" : "");
+                 (size > VMM_RAM_LIMIT) ? " (clamped to 4096 MB)" : "");
           return;
         }
       }
@@ -551,9 +551,11 @@ static void start_init_process(void) {
 
   /* 60 FPS when interacting, low-rate refresh when idle. */
   uint64_t last_frame = arch_timer_get_ms();
+  uint64_t last_cursor_frame = last_frame;
   uint64_t last_idle_refresh = last_frame;
   const uint64_t FRAME_MS = 16;
-  const uint64_t IDLE_REFRESH_MS = 100;
+  const uint64_t CURSOR_FRAME_MS = 8;
+  const uint64_t IDLE_REFRESH_MS = 500;
 
   while (1) {
     /* Poll virtio input devices (keyboard/mouse) - MUST call this! */
@@ -592,14 +594,16 @@ static void start_init_process(void) {
       needs_redraw = 0;
       cursor_dirty = 0;
       last_frame = now;
+      last_cursor_frame = now;
       last_idle_refresh = now;
-    } else if (cursor_dirty && (now - last_frame >= FRAME_MS)) {
+    } else if (cursor_dirty && (now - last_cursor_frame >= CURSOR_FRAME_MS)) {
       gui_refresh_cursor();
       cursor_dirty = 0;
-      last_frame = now;
+      last_cursor_frame = now;
     } else if (now - last_idle_refresh >= IDLE_REFRESH_MS) {
       gui_compose();
       last_frame = now;
+      last_cursor_frame = now;
       last_idle_refresh = now;
     }
 
