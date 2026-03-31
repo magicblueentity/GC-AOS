@@ -83,6 +83,7 @@ QEMU := qemu-system-aarch64
 QEMU_MACHINE := virt,gic-version=3
 QEMU_CPU := max
 QEMU_MEMORY := 4G
+
 QEMU_FLAGS := -M $(QEMU_MACHINE) -cpu $(QEMU_CPU) -m $(QEMU_MEMORY) \
               -nographic -serial mon:stdio \
               -drive if=none,id=hd0,format=raw,file=$(IMAGE_DIR)/gc-aos.img \
@@ -246,6 +247,22 @@ image: $(IMAGE_DIR) kernel drivers
 	@./scripts/create-boot-image.sh $(BUILD_DIR) $(IMAGE_DIR)
 	@echo "[IMAGE] Created: $(IMAGE_DIR)/gc-aos.img"
 
+image-ready: $(IMAGE_DIR)
+	@# Only (re)create the disk image when it is missing or not readable.
+	@if [ ! -f "$(IMAGE_DIR)/gc-aos.img" ]; then \
+		echo "[IMAGE] Missing $(IMAGE_DIR)/gc-aos.img - building..."; \
+		$(MAKE) image; \
+	elif [ ! -r "$(IMAGE_DIR)/gc-aos.img" ]; then \
+		echo "[IMAGE] Image exists but is not readable - trying to fix permissions..."; \
+		chmod u+rw "$(IMAGE_DIR)/gc-aos.img" 2>/dev/null || true; \
+		if [ ! -r "$(IMAGE_DIR)/gc-aos.img" ]; then \
+			echo "[IMAGE] Permission fix failed - rebuilding image..."; \
+			$(MAKE) image; \
+		fi; \
+	else \
+		echo "[IMAGE] Using existing $(IMAGE_DIR)/gc-aos.img"; \
+	fi
+
 # ============================================================================
 # QEMU Testing
 # ============================================================================
@@ -293,7 +310,7 @@ run: kernel
 	@echo "[RUN] Starting GC AOS in QEMU..."
 	@qemu-system-aarch64 -M virt,gic-version=3 -cpu max -m 4G -nographic -kernel $(KERNEL_BINARY)
 
-run-gui: kernel
+run-gui: kernel image-ready
 	@echo "[RUN] Starting GC AOS with GUI display..."
 	@qemu-system-aarch64 -M virt,gic-version=3 \
 		-cpu max -m 4G \
@@ -310,7 +327,7 @@ run-gui: kernel
 		-serial stdio \
 		-kernel $(KERNEL_BINARY)
 
-run-gpu: kernel
+run-gpu: kernel image-ready
 	@echo "[RUN] Starting GC AOS with virtio-GPU acceleration..."
 	@qemu-system-aarch64 -M virt,gic-version=3 \
 		-cpu max -m 4G \

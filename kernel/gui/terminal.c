@@ -396,17 +396,45 @@ void term_render(struct terminal *term) {
   int base_x = term->content_x + TERM_PADDING;
   int base_y = term->content_y + TERM_PADDING;
   int cell_count = term->rows * term->cols;
-  gui_draw_rect(term->content_x, term->content_y,
-                term->cols * TERM_CHAR_W + TERM_PADDING * 2,
-                term->rows * TERM_CHAR_H + TERM_PADDING * 2, term_colors[0]);
 
-  for (int row = 0; row < term->rows; row++) {
-    for (int col = 0; col < term->cols; col++) {
-      term_draw_cell(term, row, col);
+  bool position_changed =
+      (term->content_x != term->last_content_x) ||
+      (term->content_y != term->last_content_y);
+
+  /* Full refresh: background + all cells */
+  if (term->full_refresh || position_changed) {
+    gui_draw_rect(term->content_x, term->content_y,
+                  term->cols * TERM_CHAR_W + TERM_PADDING * 2,
+                  term->rows * TERM_CHAR_H + TERM_PADDING * 2, term_colors[0]);
+
+    for (int row = 0; row < term->rows; row++) {
+      for (int col = 0; col < term->cols; col++) {
+        term_draw_cell(term, row, col);
+      }
+    }
+  } else {
+    /* Incremental redraw: only cells that actually changed */
+    for (int i = 0; i < cell_count; i++) {
+      if (term->chars[i] != term->prev_chars[i] ||
+          term->fg_colors[i] != term->prev_fg_colors[i] ||
+          term->bg_colors[i] != term->prev_bg_colors[i]) {
+        int row = i / term->cols;
+        int col = i % term->cols;
+        term_draw_cell(term, row, col);
+      }
     }
   }
 
-  /* Draw cursor */
+  /* Cursor drawing: clear old cursor if needed, then draw new one */
+  if (term->last_cursor_visible) {
+    int old_x = base_x + term->last_cursor_x * TERM_CHAR_W;
+    int old_y = base_y + term->last_cursor_y * TERM_CHAR_H;
+    int idx = term->last_cursor_y * term->cols + term->last_cursor_x;
+    uint32_t fg = term_colors[term->fg_colors[idx] & 0xF];
+    uint32_t bg = term_colors[term->bg_colors[idx] & 0xF];
+    gui_draw_char(old_x, old_y, term->chars[idx], fg, bg);
+  }
+
   if (term->cursor_visible) {
     int x = base_x + term->cursor_x * TERM_CHAR_W;
     int y = base_y + term->cursor_y * TERM_CHAR_H;

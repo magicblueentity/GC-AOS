@@ -422,13 +422,36 @@ static void init_subsystems(void *dtb) {
     /* Create demo windows with working terminal */
     extern struct window *gui_create_file_manager(int x, int y);
     extern void gui_set_window_userdata(struct window *win, void *data);
-    struct window *boot_term_win = gui_create_window("Terminal", 50, 50, 400, 300);
+
+    /* Scale initial demo window geometry to the current screen size.
+     * This keeps the UI usable when the framebuffer resolution changes. */
+    const uint32_t base_w = 1920;
+    const uint32_t base_h = 1080;
+    uint64_t sx = ((uint64_t)fb_width << 16) / base_w;
+    uint64_t sy = ((uint64_t)fb_height << 16) / base_h;
+
+    int boot_x = (int)((50ULL * sx) >> 16);
+    int boot_y = (int)((50ULL * sy) >> 16);
+    int boot_w = (int)((400ULL * sx) >> 16);
+    int boot_h = (int)((300ULL * sy) >> 16);
+
+    if (boot_x < 10)
+      boot_x = 10;
+    if (boot_y < 10)
+      boot_y = 10;
+    if (boot_w < 300)
+      boot_w = 300;
+    if (boot_h < 200)
+      boot_h = 200;
+
+    struct window *boot_term_win =
+        gui_create_window("Terminal", boot_x, boot_y, boot_w, boot_h);
 
     /* Create and set active terminal so keyboard input works */
     {
       extern struct terminal *term_create(int x, int y, int cols, int rows);
       extern void term_set_active(struct terminal * term);
-      struct terminal *term = term_create(52, 80, 48, 15);
+      struct terminal *term = term_create(boot_x + 2, boot_y + 30, 48, 15);
       if (term) {
         if (boot_term_win) {
           gui_set_window_userdata(boot_term_win, term);
@@ -437,7 +460,8 @@ static void init_subsystems(void *dtb) {
       }
     }
 
-    gui_create_file_manager(200, 100);
+    gui_create_file_manager((int)((200ULL * sx) >> 16),
+                             (int)((100ULL * sy) >> 16));
 
     /* Compose and display desktop */
     gui_compose();

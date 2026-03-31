@@ -1,7 +1,7 @@
 /*
- * Vib-OS - Application Framework
+ * GC-AOS - Application Framework
  *
- * Base framework for GUI applications.
+ * Base framework for every GUI application.
  */
 
 #include "mm/kmalloc.h"

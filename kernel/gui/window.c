@@ -848,13 +848,19 @@ static struct window *dragging_window = 0;
 static struct window *resizing_window = 0;
 
 void compositor_mark_full_redraw(void);
+void compositor_mark_dirty(int x, int y, int w, int h);
 
 static void gui_mark_window_dirty(struct window *win) {
   if (!win) {
     return;
   }
   win->surface_dirty = true;
-  compositor_mark_full_redraw();
+  /* Only mark the window area as dirty. This allows the compositor to
+   * avoid full-frame memory copies during typical redraws (hover, focus,
+   * app updates). */
+  compositor_mark_dirty(win->x - BORDER_WIDTH - 2, win->y - BORDER_WIDTH - 2,
+                         win->width + (BORDER_WIDTH + 2) * 2,
+                         win->height + (BORDER_WIDTH + 2) * 2);
 }
 
 static int gui_ensure_window_surface(struct window *win) {
@@ -1800,6 +1806,11 @@ static void gui_play_mp3_file(const char *path) {
   media_free_audio(&audio);
 }
 
+/* If we're doing a partial compositor update, we only need to blit window
+ * surfaces that overlap dirty regions. This reduces wasted backbuffer work
+ * and improves input responsiveness. */
+static int compositor_window_needs_blit(int x, int y, int w, int h);
+
 static void draw_window(struct window *win) {
   if (!win->visible)
     return;
@@ -1807,6 +1818,10 @@ static void draw_window(struct window *win) {
     return;
 
   if (!win->surface_dirty) {
+    if (!compositor_window_needs_blit(win->x, win->y, win->width,
+                                      win->height)) {
+      return;
+    }
     gui_blit_window_surface(win);
     return;
   }
@@ -2766,6 +2781,7 @@ static void draw_window(struct window *win) {
 
 /* Menu dropdown state */
 static int menu_open = 0; /* 0=closed, 1=Apple menu open */
+static int menu_time_dirty = 0; /* Set when HH:MM changes */
 
 static void draw_menu_bar(void) {
   static int cached_hours = -1;
@@ -2804,6 +2820,7 @@ static void draw_menu_bar(void) {
     if (hrs != cached_hours || mins != cached_mins) {
       cached_hours = hrs;
       cached_mins = mins;
+      menu_time_dirty = 1;
       time_str[0] = '0' + (hrs / 10);
       time_str[1] = '0' + (hrs % 10);
       time_str[2] = ':';
@@ -3229,6 +3246,11 @@ static int cached_desktop_scene_w = 0;
 static int cached_desktop_scene_h = 0;
 static int desktop_scene_cached = 0;
 
+/* Overlay redraw flags: avoid rebuilding full desktop background every frame.
+ * Menu/Dock live on top of the cached background. */
+static int menu_overlay_dirty = 1;
+static int dock_overlay_dirty = 1;
+
 static inline void fast_memcpy_line(uint32_t *dst, uint32_t *src, int width);
 
 /* Draw wallpaper - supports both gradients and JPEG images */
@@ -3357,10 +3379,12 @@ static void draw_desktop(void) {
     desktop_draw_icons();
   }
 
-  /* Draw menu bar at top (glass effect) */
-  draw_menu_bar();
+  /* Desktop background only (wallpaper + icons).
+   * Menu bar and dock are drawn as overlays in gui_compose(). */
+}
 
-  /* Draw dock at bottom */
+static void draw_desktop_overlays(void) {
+  draw_menu_bar();
   draw_dock();
 }
 
@@ -3379,6 +3403,29 @@ static compositor_dirty_rect_t g_dirty_regions[MAX_DIRTY_REGIONS];
 static int g_dirty_count = 0;
 static int g_full_redraw = 1; /* Start with full redraw */
 static int g_frame_count = 0;
+
+static inline int rects_overlap(int ax, int ay, int aw, int ah, int bx,
+                                 int by, int bw, int bh) {
+  return (ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by);
+}
+
+static int compositor_window_needs_blit(int x, int y, int w, int h) {
+  if (g_full_redraw) {
+    return 1;
+  }
+  if (g_dirty_count <= 0) {
+    return 0;
+  }
+  for (int d = 0; d < g_dirty_count; d++) {
+    if (!g_dirty_regions[d].valid)
+      continue;
+    if (rects_overlap(x, y, w, h, g_dirty_regions[d].x, g_dirty_regions[d].y,
+                      g_dirty_regions[d].w, g_dirty_regions[d].h)) {
+      return 1;
+    }
+  }
+  return 0;
+}
 
 /* Mark a region as needing update */
 void compositor_mark_dirty(int x, int y, int w, int h) {
@@ -3453,11 +3500,51 @@ void gui_draw_cursor(void);
 void gui_compose(void) {
   g_frame_count++;
 
-  /* Draw desktop and taskbar */
-  draw_desktop();
+  /* 1) Desktop background: only rebuild/copy when needed. */
+  if (g_full_redraw || desktop_scene_cached == 0) {
+    draw_desktop();
+  }
+
+  /* If menu time changed, mark/refresh only the menu area. */
+  if (menu_time_dirty) {
+    menu_time_dirty = 0;
+    menu_overlay_dirty = 1;
+    compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT);
+  }
+
+  /* 2) Overlays: menu bar + dock. */
+  if (g_full_redraw) {
+    menu_overlay_dirty = 1;
+    dock_overlay_dirty = 1;
+  }
+
+  if (menu_overlay_dirty) {
+    /* Clear stale dropdown by restoring background under the dropdown area
+     * before redrawing the menu overlay. */
+    if (cached_desktop_scene) {
+      int pitch_pixels = primary_display.pitch / 4;
+      int restore_y0 = MENU_BAR_HEIGHT;
+      int restore_y1 = MENU_BAR_HEIGHT + 80;
+      if (restore_y1 > (int)primary_display.height)
+        restore_y1 = primary_display.height;
+      for (int y = restore_y0; y < restore_y1; y++) {
+        uint32_t *src = cached_desktop_scene + y * primary_display.width;
+        uint32_t *dst = primary_display.backbuffer + y * pitch_pixels;
+        fast_memcpy_line(dst, src, primary_display.width);
+      }
+    }
+    draw_menu_bar();
+    menu_overlay_dirty = 0;
+  }
+
+  if (dock_overlay_dirty) {
+    draw_dock();
+    dock_overlay_dirty = 0;
+  }
 
   /* Update Snake game state (throttled) */
   static int snake_tick = 0;
+  static int clock_tick = 0;
   int snake_visible = 0;
   for (struct window *scan = window_stack; scan; scan = scan->next) {
     if (scan->visible && window_title_starts_with(scan, "Snake")) {
@@ -3471,15 +3558,41 @@ void gui_compose(void) {
     for (struct window *scan = window_stack; scan; scan = scan->next) {
       if (scan->visible && window_title_starts_with(scan, "Snake")) {
         scan->surface_dirty = true;
+        compositor_mark_dirty(scan->x - BORDER_WIDTH - 2,
+                               scan->y - BORDER_WIDTH - 2,
+                               scan->width + (BORDER_WIDTH + 2) * 2,
+                               scan->height + (BORDER_WIDTH + 2) * 2);
       }
     }
   } else if (!snake_visible) {
     snake_tick = 0;
   }
 
-  for (struct window *scan = window_stack; scan; scan = scan->next) {
-    if (scan->visible && window_title_starts_with(scan, "Clock")) {
-      scan->surface_dirty = true;
+  /* Update Clock window (throttled). Redrawing analog clock every frame is
+   * expensive; update it at a reasonable cadence and let dirty regions handle
+   * the partial framebuffer copy. */
+  {
+    int clock_visible = 0;
+    for (struct window *scan = window_stack; scan; scan = scan->next) {
+      if (scan->visible && window_title_starts_with(scan, "Clock")) {
+        clock_visible = 1;
+        break;
+      }
+    }
+
+    if (clock_visible && ++clock_tick >= 10) { /* Update every 10 frames */
+      clock_tick = 0;
+      for (struct window *scan = window_stack; scan; scan = scan->next) {
+        if (scan->visible && window_title_starts_with(scan, "Clock")) {
+          scan->surface_dirty = true;
+          compositor_mark_dirty(scan->x - BORDER_WIDTH - 2,
+                                 scan->y - BORDER_WIDTH - 2,
+                                 scan->width + (BORDER_WIDTH + 2) * 2,
+                                 scan->height + (BORDER_WIDTH + 2) * 2);
+        }
+      }
+    } else if (!clock_visible) {
+      clock_tick = 0;
     }
   }
 
@@ -3500,7 +3613,7 @@ void gui_compose(void) {
   if (primary_display.backbuffer && primary_display.framebuffer) {
     cursor_erase();
 
-    if (g_full_redraw || g_dirty_count == 0) {
+    if (g_full_redraw) {
       /* Full frame update - use ultra-fast unrolled copy */
       uint64_t *src = (uint64_t *)primary_display.backbuffer;
       uint64_t *dst = (uint64_t *)primary_display.framebuffer;
@@ -3524,7 +3637,7 @@ void gui_compose(void) {
       }
 
       g_full_redraw = 0;
-    } else {
+    } else if (g_dirty_count > 0) {
       /* Partial update - only copy dirty regions */
       for (int d = 0; d < g_dirty_count; d++) {
         if (g_dirty_regions[d].valid) {
@@ -3650,14 +3763,24 @@ int gui_mouse_needs_full_redraw(void) {
     return 1;
   if (mouse_visual_dirty) {
     mouse_visual_dirty = 0;
+    menu_overlay_dirty = 1;
+    dock_overlay_dirty = 1;
+    compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
+    compositor_mark_dirty(0, primary_display.height - DOCK_HEIGHT,
+                           primary_display.width, DOCK_HEIGHT);
     return 1;
   }
   if (dock_hover != last_dock_hover) {
     last_dock_hover = dock_hover;
+    dock_overlay_dirty = 1;
+    compositor_mark_dirty(0, primary_display.height - DOCK_HEIGHT,
+                           primary_display.width, DOCK_HEIGHT);
     return 1;
   }
   if (menu_state != last_menu_open) {
     last_menu_open = menu_state;
+    menu_overlay_dirty = 1;
+    compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
     return 1;
   }
 
@@ -3933,12 +4056,16 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
       if (rel_y >= 2 && rel_y < 32) {
         gui_create_window("About", 280, 180, 420, 260);
         menu_open = 0;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
       /* Settings (y+40) */
       if (rel_y >= 32 && rel_y < 58) {
         gui_create_window("Settings", 200, 120, 380, 320);
         menu_open = 0;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
       /* Restart (y+58) */
@@ -3946,10 +4073,14 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
         extern void arch_halt(void);
         arch_halt();
         menu_open = 0;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
       /* Click in dropdown but not on item - close menu */
       menu_open = 0;
+      menu_overlay_dirty = 1;
+      compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
       return;
     }
 
@@ -4014,12 +4145,16 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
       if (rel_y >= 2 && rel_y < 32) {
         gui_create_window("About", 280, 180, 420, 260);
         menu_open = 0;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
       /* Settings (y+40) - expanded range */
       if (rel_y >= 32 && rel_y < 58) {
         gui_create_window("Settings", 200, 120, 380, 320);
         menu_open = 0;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
       /* Restart (y+58) - expanded range */
@@ -4027,9 +4162,13 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
         extern void arch_halt(void);
         arch_halt();
         menu_open = 0;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
       menu_open = 0;
+      menu_overlay_dirty = 1;
+      compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
       return;
     }
 
@@ -4038,11 +4177,15 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
       /* Apple menu / Vib-OS logo area (x < 90) - toggle dropdown */
       if (x < 90) {
         menu_open = menu_open ? 0 : 1;
+        menu_overlay_dirty = 1;
+        compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
         return;
       }
 
       /* Close menu if clicking elsewhere on menu bar */
       menu_open = 0;
+      menu_overlay_dirty = 1;
+      compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
     }
     return;
   }
@@ -4050,6 +4193,8 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
   /* Close menu if clicking elsewhere */
   if (menu_open) {
     menu_open = 0;
+    menu_overlay_dirty = 1;
+    compositor_mark_dirty(0, 0, primary_display.width, MENU_BAR_HEIGHT + 80);
   }
 
   for (struct window *win = window_stack; win; win = win->next) {

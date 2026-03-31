@@ -8,6 +8,7 @@
 #include "printk.h"
 #include "mm/vmm.h"
 #include "mm/pmm.h"
+#include "mm/kmalloc.h"
 
 /* ===================================================================== */
 /* virtio-gpu MMIO Base Addresses */
@@ -204,14 +205,52 @@ static void virtio_write32(volatile uint8_t *base, uint32_t offset, uint32_t val
 int fb_init(void)
 {
     printk(KERN_INFO "FB: Initializing framebuffer\n");
-    
-    /* Use static buffer in BSS */
-    static uint32_t static_framebuffer[1920 * 1080] __attribute__((aligned(4096)));
-    
-    framebuffer.buffer = static_framebuffer;
-    framebuffer.width = SIMPLE_FB_WIDTH;
-    framebuffer.height = SIMPLE_FB_HEIGHT;
-    framebuffer.pitch = SIMPLE_FB_WIDTH * 4;
+
+    /* Try to use the currently configured QEMU ramfb resolution so the UI
+     * matches the host window size. Fallback to SIMPLE_FB_* if not
+     * available. */
+    uint32_t target_w = SIMPLE_FB_WIDTH;
+    uint32_t target_h = SIMPLE_FB_HEIGHT;
+
+    extern int ramfb_get_resolution(uint32_t *width_out, uint32_t *height_out);
+    if (ramfb_get_resolution(&target_w, &target_h) == 0 && target_w > 0 &&
+        target_h > 0) {
+        printk(KERN_INFO "FB: ramfb target resolution %ux%u\n", target_w,
+               target_h);
+    } else {
+        printk(KERN_WARNING "FB: could not read ramfb target resolution, using %ux%u\n",
+               target_w, target_h);
+        target_w = SIMPLE_FB_WIDTH;
+        target_h = SIMPLE_FB_HEIGHT;
+    }
+
+    /* Safety clamp to avoid allocating absurd framebuffer sizes. */
+    const size_t MAX_FB_BYTES = 128UL * 1024UL * 1024UL; /* 128MB */
+    size_t bytes = (size_t)target_w * (size_t)target_h * sizeof(uint32_t);
+    if (bytes == 0 || bytes > MAX_FB_BYTES) {
+        printk(KERN_WARNING "FB: target framebuffer too large (%zu bytes), falling back to %ux%u\n",
+               bytes, SIMPLE_FB_WIDTH, SIMPLE_FB_HEIGHT);
+        target_w = SIMPLE_FB_WIDTH;
+        target_h = SIMPLE_FB_HEIGHT;
+        bytes = (size_t)target_w * (size_t)target_h * sizeof(uint32_t);
+    }
+
+    /* Primary allocation */
+    framebuffer.buffer = kmalloc(bytes);
+    if (!framebuffer.buffer) {
+        /* Fallback to a compile-time sized buffer. */
+        static uint32_t fallback_framebuffer[SIMPLE_FB_WIDTH * SIMPLE_FB_HEIGHT]
+            __attribute__((aligned(4096)));
+        framebuffer.buffer = fallback_framebuffer;
+        target_w = SIMPLE_FB_WIDTH;
+        target_h = SIMPLE_FB_HEIGHT;
+        framebuffer.pitch = SIMPLE_FB_WIDTH * 4;
+    } else {
+        framebuffer.pitch = target_w * 4;
+    }
+
+    framebuffer.width = target_w;
+    framebuffer.height = target_h;
     framebuffer.initialized = true;
     
     printk(KERN_INFO "FB: Framebuffer %ux%u at 0x%lx\n",

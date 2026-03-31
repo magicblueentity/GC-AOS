@@ -783,7 +783,12 @@ void desktop_arrange_icons(void) {
   /* Arrange icons in a grid from top-left */
   int x = DESKTOP_START_X;
   int y = DESKTOP_START_Y;
-  int max_y = 600; /* Approximate, should use screen height */
+  /* Use actual screen height so the icon grid wraps correctly on
+   * different resolutions. */
+  int max_y = (int)gui_get_screen_height() - 80;
+  if (max_y < DESKTOP_START_Y + DESKTOP_ICON_SIZE + DESKTOP_LABEL_HEIGHT) {
+    max_y = DESKTOP_START_Y + DESKTOP_ICON_SIZE + DESKTOP_LABEL_HEIGHT;
+  }
 
   for (int i = 0; i < desktop_icon_count; i++) {
     desktop_icons[i].x = x;

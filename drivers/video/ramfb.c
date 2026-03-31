@@ -204,3 +204,40 @@ int ramfb_init(uint32_t *framebuffer, uint32_t width, uint32_t height) {
   uint32_t stride = width * 4; /* 32bpp */
   return ramfb_setup((uint64_t)(uintptr_t)framebuffer, width, height, stride);
 }
+
+/* Read the currently configured ramfb resolution from fw_cfg (guest-side).
+ * This lets fb_init allocate the correct framebuffer size so the UI can
+ * match the host/QEMU window size. */
+int ramfb_get_resolution(uint32_t *width_out, uint32_t *height_out) {
+  uint32_t width = 0, height = 0;
+
+  /* Verify fw_cfg is available */
+  fw_cfg_select(FW_CFG_SIGNATURE);
+  char sig[4];
+  fw_cfg_read(sig, 4);
+
+  if (sig[0] != 'Q' || sig[1] != 'E' || sig[2] != 'M' || sig[3] != 'U') {
+    printk(KERN_ERR "RAMFB: fw_cfg not available (sig=%c%c%c%c)\n", sig[0],
+           sig[1], sig[2], sig[3]);
+    return -1;
+  }
+
+  if (ramfb_find_cfg() < 0) {
+    return -1;
+  }
+
+  /* Read the existing RAMFBCfg blob from fw_cfg. */
+  fw_cfg_select(ramfb_selector);
+  struct ramfb_cfg cfg;
+  fw_cfg_read(&cfg, sizeof(cfg));
+
+  width = bswap32(cfg.width);
+  height = bswap32(cfg.height);
+
+  if (width_out)
+    *width_out = width;
+  if (height_out)
+    *height_out = height;
+
+  return (width > 0 && height > 0) ? 0 : -1;
+}
