@@ -1,5 +1,5 @@
 /*
- * Vib-OS - GUI System Header
+ * GC-AOS - GUI System Header
  */
 
 #ifndef _GUI_H

@@ -241,13 +241,6 @@ uint64_t arch_timer_get_frequency(void)
     return timer_get_frequency();
 }
 
-uint64_t arch_timer_get_ms(void)
-{
-    uint64_t ticks = timer_get_count();
-    uint64_t freq = timer_get_frequency();
-    return (ticks * 1000) / freq;
-}
-
 /* ===================================================================== */
 /* Memory Management */
 /* ===================================================================== */

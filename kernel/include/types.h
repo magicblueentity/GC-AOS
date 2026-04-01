@@ -1,5 +1,5 @@
 /*
- * UnixOS Kernel - Basic Type Definitions
+ * GC-AOS Kernel - Basic Type Definitions
  */
 
 #ifndef _KERNEL_TYPES_H
@@ -106,6 +106,9 @@ typedef struct {
     volatile long counter;
 } atomic64_t;
 
+/* Atomic initialization */
+#define ATOMIC_INIT(i)  { (i) }
+
 /* Atomic operations */
 static inline void atomic_set(atomic_t *v, int i)
 {
@@ -125,6 +128,16 @@ static inline void atomic_inc(atomic_t *v)
 static inline void atomic_dec(atomic_t *v)
 {
     __sync_sub_and_fetch(&v->counter, 1);
+}
+
+static inline void atomic_add(int i, atomic_t *v)
+{
+    __sync_add_and_fetch(&v->counter, i);
+}
+
+static inline void atomic_sub(int i, atomic_t *v)
+{
+    __sync_sub_and_fetch(&v->counter, i);
 }
 
 static inline int atomic_dec_and_test(atomic_t *v)

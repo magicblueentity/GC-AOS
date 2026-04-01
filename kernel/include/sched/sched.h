@@ -7,6 +7,7 @@
 
 #include "mm/vmm.h"
 #include "types.h"
+#include "kernel/list.h"
 
 /* ===================================================================== */
 /* Process states */
@@ -50,15 +51,6 @@ struct cpu_context {
   uint64_t fp; /* x29 - frame pointer */
   uint64_t sp; /* Stack pointer */
   uint64_t pc; /* Program counter (return address) */
-};
-
-/* ===================================================================== */
-/* Simple list helper */
-/* ===================================================================== */
-
-struct list_head {
-  struct list_head *next;
-  struct list_head *prev;
 };
 
 /* ===================================================================== */

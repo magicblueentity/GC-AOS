@@ -6,6 +6,7 @@
 
 #include "arch/arm64/timer.h"
 #include "arch/arm64/gic.h"
+#include "arch/timer.h"
 #include "sched/sched.h"
 #include "printk.h"
 
@@ -149,17 +150,27 @@ void timer_set_next(uint64_t ticks)
     write_cntv_tval(ticks);
 }
 
+uint64_t arch_timer_get_ms(void)
+{
+    return timer_get_ms();
+}
+
+uint64_t arch_timer_get_us(void)
+{
+    return timer_get_us();
+}
+
+/* Helper functions */
 uint64_t timer_get_ms(void)
 {
-    return read_cntvct() / ticks_per_ms;
+    uint64_t ticks = timer_get_count();
+    return (ticks * 1000) / timer_get_frequency();
 }
 
 uint64_t timer_get_us(void)
 {
-    if (ticks_per_us == 0) {
-        return 0;
-    }
-    return read_cntvct() / ticks_per_us;
+    uint64_t ticks = timer_get_count();
+    return (ticks * 1000000) / timer_get_frequency();
 }
 
 void timer_delay_ms(uint32_t ms)
