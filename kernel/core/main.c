@@ -18,7 +18,7 @@
 
 /* Kernel version */
 #define VIBOS_VERSION_MAJOR 0
-#define VIBOS_VERSION_MINOR 5
+#define VIBOS_VERSION_MINOR 8
 #define VIBOS_VERSION_PATCH 0
 
 /* External symbols from linker script */
@@ -149,7 +149,7 @@ void kernel_main(void *dtb) {
   init_subsystems(dtb);
 
   printk(KERN_INFO "All subsystems initialized successfully\n");
-  printk(KERN_INFO "Starting init process...\n\n");
+  printk(KERN_INFO "Starting GC-AOS security and init process...\n\n");
 
   /* Start the first userspace process */
   start_init_process();
@@ -164,9 +164,9 @@ void kernel_main(void *dtb) {
 static void print_banner(void) {
   printk("\n");
   printk("\n");
-  printk("GC AOS v%d.%d.%d - ARM64 with GUI\n", VIBOS_VERSION_MAJOR,
+  printk("GC AOS v%d.%d.%d\n", VIBOS_VERSION_MAJOR,
          VIBOS_VERSION_MINOR, VIBOS_VERSION_PATCH);
-  printk("A modern Unix-like operating system for ARM64\n");
+  printk("THE GERMAN OPERATING SYSTEM\n");
   printk("Copyright (c) 2026 German Computers\n");
   printk("\n");
 }

@@ -1,7 +1,7 @@
 /*
- * UnixOS - Basic Shell
+ * GC-AOS - Shell
  * 
- * A minimal command interpreter for early testing.
+ * A command interpreter for testing.
  */
 
 /* Syscall numbers */

@@ -307,7 +307,7 @@ test: kernel
 # ============================================================================
 
 run: kernel
-	@echo "[RUN] Starting GC AOS in QEMU..."
+	@echo "[RUN] Starting GC AOS in QEMU for testing..."
 	@qemu-system-aarch64 -M virt,gic-version=3 -cpu max -m 4G -nographic -kernel $(KERNEL_BINARY)
 
 run-gui: kernel image-ready
@@ -362,10 +362,10 @@ toolchain:
 # ============================================================================
 
 clean:
-	@echo "[CLEAN] Removing build artifacts..."
+	@echo "[CLEAN] Removing GC-AOS build artifacts..."
 	@rm -rf $(BUILD_DIR)
 	@rm -rf $(IMAGE_DIR)
-	@echo "[CLEAN] Done"
+	@echo "[CLEAN] Cleaning done - ready for rebuilding"
 
 distclean: clean
 	@echo "[DISTCLEAN] Removing all generated files..."

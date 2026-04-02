@@ -5,6 +5,7 @@
  */
 
 #include "../core/process.h" /* For Doom launch */
+#include "../include/gui/gui.h" /* GUI function declarations */
 #include "desktop.h"         /* Desktop manager */
 #include "dock_icons.h"      /* Dock icons (PNG-based) */
 #include "fs/vfs.h"          /* VFS headers */
@@ -255,14 +256,8 @@ static int rename_cursor = 0;
 static char clipboard_buffer[CLIPBOARD_MAX];
 static int clipboard_len = 0;
 
-/* Terminal state (global for keyboard input) */
-#define TERM_INPUT_MAX 256
-#define TERM_HISTORY_LINES 16
-static char term_input[TERM_INPUT_MAX];
-static int term_input_len = 0;
-static char term_history[TERM_HISTORY_LINES][80];
-static int term_history_count = 0;
-static int term_scroll = 0;
+/* Terminal state is now per-terminal - remove global input buffer */
+/* The old global term_input buffer was causing the overwrite bug */
 
 /* Snake game state */
 #define SNAKE_MAX_LEN 100
@@ -470,43 +465,12 @@ static void rename_key(int key) {
   }
 }
 
-/* Terminal key handler */
+/* Terminal key handler - now delegates to per-terminal system */
 static void terminal_key(int key) {
-  if (key == '\b' || key == 127) { /* Backspace */
-    if (term_input_len > 0) {
-      term_input_len--;
-      term_input[term_input_len] = '\0';
-    }
-  } else if (key == '\n' || key == '\r') { /* Enter - execute command */
-    if (term_input_len > 0) {
-      /* Save to history */
-      if (term_history_count < TERM_HISTORY_LINES) {
-        for (int i = 0; i < term_input_len && i < 79; i++) {
-          term_history[term_history_count][i] = term_input[i];
-        }
-        term_history[term_history_count]
-                    [term_input_len < 79 ? term_input_len : 79] = '\0';
-        term_history_count++;
-      }
-
-      /* Check for commands */
-      if (term_input[0] == 'h' && term_input[1] == 'e' &&
-          term_input[2] == 'l' && term_input[3] == 'p') {
-        /* Help command */
-      } else if (term_input[0] == 'c' && term_input[1] == 'l' &&
-                 term_input[2] == 'e' && term_input[3] == 'a' &&
-                 term_input[4] == 'r') {
-        term_history_count = 0;
-      }
-      /* Clear input */
-      term_input_len = 0;
-      term_input[0] = '\0';
-    }
-  } else if (key >= 32 && key < 127) { /* Printable */
-    if (term_input_len < TERM_INPUT_MAX - 1) {
-      term_input[term_input_len++] = (char)key;
-      term_input[term_input_len] = '\0';
-    }
+  /* Get the active terminal and delegate to it */
+  struct terminal *term = term_get_active();
+  if (term) {
+    term_handle_key(term, key);
   }
 }
 
@@ -524,6 +488,121 @@ struct display {
 };
 
 static struct display primary_display = {0};
+
+/* ===================================================================== */
+/* ===================================================================== */
+/* Debug Mode - Render Overlay */
+/* ===================================================================== */
+#define DEBUG_RENDER_OVERLAY 0  /* Set to 1 to enable debug overlay */
+
+static int debug_frame_count = 0;
+static int debug_active_window_id = 0;
+static int debug_resize_state = 0;
+static int debug_input_buffer_len = 0;
+static int debug_render_pass = 0;
+
+/* Forward declarations for debug helper functions */
+static int gui_append_str(char *buf, int pos, int max, const char *text);
+static int gui_append_u64(char *buf, int pos, int max, uint64_t value);
+
+/* Draw debug overlay showing rendering diagnostics */
+static void gui_draw_debug_overlay(void) {
+  // Debug overlay disabled to fix compilation issues
+  return;
+  
+#if 0
+  if (!DEBUG_RENDER_OVERLAY)
+    return;
+
+  int x = 10;
+  int y = 10;
+  uint32_t bg = 0x000000;
+  uint32_t fg = 0x00FF00;
+
+  char buf[128];
+  int pos = 0;
+
+  /* Background panel */
+  gui_draw_rect(x - 5, y - 5, 250, 120, bg);
+  gui_draw_rect_outline(x - 5, y - 5, 250, 120, fg, 1);
+
+  /* Debug info lines */
+  pos = 0;
+  pos = gui_append_str(buf, pos, sizeof(buf), "DEBUG - Frame: ");
+  pos = gui_append_u64(buf, pos, sizeof(buf), debug_frame_count);
+  gui_draw_string(x, y, buf, fg, bg);
+  y += 18;
+
+  pos = 0;
+  pos = gui_append_str(buf, pos, sizeof(buf), "Active Win: ");
+  pos = gui_append_u64(buf, pos, sizeof(buf), debug_active_window_id);
+  gui_draw_string(x, y, buf, fg, bg);
+  y += 18;
+
+  pos = 0;
+  pos = gui_append_str(buf, pos, sizeof(buf), "Resize State: ");
+  pos = gui_append_u64(buf, pos, sizeof(buf), debug_resize_state);
+  gui_draw_string(x, y, buf, fg, bg);
+  y += 18;
+
+  pos = 0;
+  pos = gui_append_str(buf, pos, sizeof(buf), "Input Len: ");
+  pos = gui_append_u64(buf, pos, sizeof(buf), debug_input_buffer_len);
+  gui_draw_string(x, y, buf, fg, bg);
+  y += 18;
+
+  pos = 0;
+  pos = gui_append_str(buf, pos, sizeof(buf), "Render Pass: ");
+  pos = gui_append_u64(buf, pos, sizeof(buf), debug_render_pass);
+  gui_draw_string(x, y, buf, fg, bg);
+  y += 18;
+
+  pos = 0;
+  pos = gui_append_str(buf, pos, sizeof(buf), "Windows: ");
+  int win_count = 0;
+  for (int i = 0; i < MAX_WINDOWS; i++) {
+    if (windows[i].id != 0) win_count++;
+  }
+  pos = gui_append_u64(buf, pos, sizeof(buf), win_count);
+  gui_draw_string(x, y, buf, fg, bg);
+#endif
+}
+
+/* Update debug state - call before each frame */
+static void gui_update_debug_state(void) {
+  // Debug overlay disabled to fix compilation issues
+  return;
+  
+#if 0
+  if (!DEBUG_RENDER_OVERLAY)
+    return;
+
+  debug_frame_count++;
+  debug_render_pass = 0;
+
+  /* Count active windows */
+  int active = 0;
+  for (int i = 0; i < MAX_WINDOWS; i++) {
+    if (windows[i].id != 0 && windows[i].visible) {
+      active++;
+      if (windows[i].focused) {
+        debug_active_window_id = windows[i].id;
+      }
+    }
+  }
+
+  /* Resize state */
+  debug_resize_state = (resizing_window != NULL) ? 1 : 0;
+
+  /* Get input buffer length from active terminal */
+  struct terminal *term = term_get_active();
+  if (term) {
+    debug_input_buffer_len = term_get_input_len(term);
+  } else {
+    debug_input_buffer_len = 0;
+  }
+#endif
+}
 
 static int gui_append_str(char *buf, int pos, int max, const char *text) {
   while (*text && pos < max - 1) {
@@ -808,7 +887,8 @@ typedef enum {
   WINDOW_NORMAL,
   WINDOW_MINIMIZED,
   WINDOW_MAXIMIZED,
-  WINDOW_FULLSCREEN
+  WINDOW_FULLSCREEN,
+  WINDOW_RESIZING
 } window_state_t;
 
 struct window {
@@ -1900,16 +1980,10 @@ static void draw_window(struct window *win) {
 
   gui_draw_rect(content_x, content_y, content_w, content_h, THEME_BG);
 
-  /* While dragging/resizing, skip heavy app redraw and use a lightweight preview. */
-  if (resizing_window == win) {
-    gui_draw_rect_outline(content_x + 6, content_y + 6, content_w - 12,
-                          content_h - 12, 0x4B5563, 1);
-    gui_draw_string(content_x + 12, content_y + 12, "Resizing window...",
-                    0x9CA3AF, THEME_BG);
-    gui_end_surface();
-    win->surface_dirty = false;
-    gui_blit_window_surface(win);
-    return;
+  /* Ensure window is in normal state when not resizing */
+  if (win->state == WINDOW_RESIZING && resizing_window != win) {
+    win->state = WINDOW_NORMAL;
+    win->surface_dirty = true; /* Force full redraw when resize ends */
   }
 
   /* Draw window-specific content based on title */
@@ -2770,6 +2844,21 @@ static void draw_window(struct window *win) {
     }
   }
 
+  /* Draw resize overlay ON TOP of content when resizing */
+  if (resizing_window == win) {
+    /* Semi-transparent overlay effect */
+    gui_draw_rect_outline(content_x + 6, content_y + 6, content_w - 12,
+                          content_h - 12, 0x4B5563, 2);
+    /* Corner indicators */
+    gui_draw_rect(content_x + 6, content_y + 6, 12, 12, 0x6366F1);
+    gui_draw_rect(content_x + content_w - 18, content_y + content_h - 18, 
+                  12, 12, 0x6366F1);
+    gui_draw_string(content_x + 12, content_y + 12, "Resizing...",
+                    0xFFFFFF, THEME_BG);
+    
+    win->state = WINDOW_RESIZING;
+  }
+
   gui_end_surface();
   win->surface_dirty = false;
   gui_blit_window_surface(win);
@@ -3500,6 +3589,9 @@ void gui_draw_cursor(void);
 void gui_compose(void) {
   g_frame_count++;
 
+  /* Update debug state at frame start */
+  gui_update_debug_state();
+
   /* 1) Desktop background: only rebuild/copy when needed. */
   if (g_full_redraw || desktop_scene_cached == 0) {
     draw_desktop();
@@ -3606,8 +3698,12 @@ void gui_compose(void) {
 
   /* Draw in reverse (bottom to top) */
   for (int i = count - 1; i >= 0; i--) {
+    debug_render_pass++;
     draw_window(draw_order[i]);
   }
+
+  /* Draw debug overlay on top of everything */
+  gui_draw_debug_overlay();
 
   /* Smart frame buffer update */
   if (primary_display.backbuffer && primary_display.framebuffer) {
@@ -3803,7 +3899,10 @@ void gui_move_mouse(int dx, int dy) {
 
 void gui_set_mouse_buttons(int buttons) { mouse_buttons = buttons; }
 
-void gui_handle_key_event(int key) {
+void gui_handle_key_event(int keycode, bool pressed) {
+  if (!pressed) return;  // Only handle key press events
+  
+  int key = keycode;
   /* Check if desktop is doing inline rename - takes priority */
   extern int desktop_is_renaming(void);
   extern int desktop_handle_key(int key);
@@ -3951,33 +4050,36 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
     int dy = y - resize_start_y;
     int new_w = resize_start_w;
     int new_h = resize_start_h;
-    int new_x = resize_start_win_x;
-    int new_y = resize_start_win_y;
+    int new_x = resize_start_x;
+    int new_y = resize_start_y;
 
-    /* Calculate new dimensions based on which edge is being dragged */
-    if (resize_edge == RESIZE_RIGHT || resize_edge == RESIZE_BOTTOM_RIGHT ||
-        resize_edge == RESIZE_TOP_RIGHT) {
+    /* Apply resize based on edge */
+    if (resize_edge & RESIZE_RIGHT) {
       new_w = resize_start_w + dx;
+      if (new_w < 100) new_w = 100;
     }
-    if (resize_edge == RESIZE_LEFT || resize_edge == RESIZE_BOTTOM_LEFT ||
-        resize_edge == RESIZE_TOP_LEFT) {
-      new_w = resize_start_w - dx;
-      new_x = resize_start_win_x + dx;
-    }
-    if (resize_edge == RESIZE_BOTTOM || resize_edge == RESIZE_BOTTOM_RIGHT ||
-        resize_edge == RESIZE_BOTTOM_LEFT) {
+    if (resize_edge & RESIZE_BOTTOM) {
       new_h = resize_start_h + dy;
+      if (new_h < 100) new_h = 100;
     }
-    if (resize_edge == RESIZE_TOP || resize_edge == RESIZE_TOP_LEFT ||
-        resize_edge == RESIZE_TOP_RIGHT) {
-      new_h = resize_start_h - dy;
-      new_y = resize_start_win_y + dy;
+    if (resize_edge & RESIZE_LEFT) {
+      int w_delta = -dx;
+      if (resize_start_w + w_delta < 100) w_delta = -(resize_start_w - 100);
+      new_x = resize_start_x + w_delta;
+      new_w = resize_start_w - w_delta;
+    }
+    if (resize_edge & RESIZE_TOP) {
+      int h_delta = -dy;
+      if (resize_start_h + h_delta < MIN_WINDOW_HEIGHT)
+        h_delta = -(resize_start_h - MIN_WINDOW_HEIGHT);
+      new_y = resize_start_win_y + h_delta;
+      new_h = resize_start_h - h_delta;
     }
 
-    /* Enforce minimum size */
+    /* Enforce minimum dimensions and adjust position for left/top edges */
     if (new_w < MIN_WINDOW_WIDTH) {
-      if (resize_edge == RESIZE_LEFT || resize_edge == RESIZE_BOTTOM_LEFT ||
-          resize_edge == RESIZE_TOP_LEFT) {
+      if (resize_edge == RESIZE_LEFT || resize_edge == RESIZE_TOP_LEFT ||
+          resize_edge == RESIZE_BOTTOM_LEFT) {
         new_x = resize_start_win_x + resize_start_w - MIN_WINDOW_WIDTH;
       }
       new_w = MIN_WINDOW_WIDTH;
@@ -4001,11 +4103,19 @@ void gui_handle_mouse_event(int x, int y, int buttons) {
     resizing_window->width = new_w;
     resizing_window->height = new_h;
     resizing_window->surface_dirty = true;
-    compositor_mark_full_redraw();
+    
+    /* Mark only the resize area as dirty for better performance */
+    compositor_mark_dirty(new_x - 5, new_y - 5, new_w + 10, new_h + 10);
   }
 
   if (left_release) {
     dragging_window = 0;
+    if (resizing_window) {
+      /* Force full redraw when resize ends to restore content */
+      resizing_window->state = WINDOW_NORMAL;
+      resizing_window->surface_dirty = true;
+      compositor_mark_full_redraw();
+    }
     resizing_window = 0;
     resize_edge = RESIZE_NONE;
   }
@@ -4602,8 +4712,7 @@ int gui_init(uint32_t *framebuffer, uint32_t width, uint32_t height,
   /* ============================================= */
 
   /* Register input callbacks */
-  extern void input_set_gui_key_callback(void (*callback)(int key));
-  extern void gui_handle_key_event(int key);
+  extern void input_set_gui_key_callback(void (*callback)(int keycode, bool pressed));
   input_set_gui_key_callback(gui_handle_key_event);
 
   /* Allocate backbuffer for double-buffering */

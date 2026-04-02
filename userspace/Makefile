@@ -1,4 +1,4 @@
-# UnixOS Userspace Makefile
+# GC-AOS Userspace Makefile
 
 CC = clang
 CFLAGS = -target aarch64-unknown-none-elf \

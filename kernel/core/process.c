@@ -1,5 +1,5 @@
 /*
- * Vib-OS Process Management (ported from VibeOS)
+ * GC-AOS Process Management
  *
  * Preemptive multitasking - timer IRQ forces context switches.
  * Programs run in kernel space and call kernel functions directly.
@@ -7,6 +7,7 @@
  */
 
 #include "process.h"
+#include "../include/types.h"
 #include "../include/arch/arch.h"
 #include "../include/fs/vfs_compat.h"
 #include "../include/loader/elf.h"
@@ -85,8 +86,8 @@ void process_init(void) {
 
   printf("[PROC] Process subsystem initialized (max %d processes)\n",
          MAX_PROCESSES);
-  printf("[PROC] Program load area: 0x%lx+\n", program_base);
-  printf("[PROC] kernel_context at: 0x%lx\n", (uint64_t)&kernel_context);
+  printf("[PROC] Program load area: 0x%llx+\n", program_base);
+  printf("[PROC] kernel_context at: 0x%llx\n", (uint64_t)&kernel_context);
 }
 
 // Find a free slot in the process table (caller must hold proc_table_lock)
@@ -289,10 +290,10 @@ int process_create(const char *path, int argc, char **argv) {
   // x86 32-bit: pass via stack or registers (TBD)
 #endif
 
-  // printf("[PROC] Created process '%s' pid=%d at 0x%lx-0x%lx (slot %d)\n",
+  // printf("[PROC] Created process '%s' pid=%d at 0x%" PRIx64 "-0x%" PRIx64 " (slot %d)\n",
   //        proc->name, proc->pid, proc->load_base, proc->load_base +
   //        proc->load_size, slot);
-  // printf("[PROC] Stack at 0x%lx-0x%lx\n",
+  // printf("[PROC] Stack at 0x%" PRIx64 "-0x%" PRIx64 "\n",
   //        (uint64_t)proc->stack_base, (uint64_t)proc->stack_base +
   //        proc->stack_size);
 
@@ -386,8 +387,8 @@ void process_exit(int status) {
 
   // Debug: verify kernel_context before switching
   printf("[PROC] Switching to kernel_context: pc=0x%llx sp=0x%llx\n",
-         (unsigned long long)arch_context_get_pc(&kernel_context),
-         (unsigned long long)arch_context_get_sp(&kernel_context));
+         (uint64_t)arch_context_get_pc(&kernel_context),
+         (uint64_t)arch_context_get_sp(&kernel_context));
 
   // Sanity check kernel_context
   // Note: kernel code is in flash at 0x0, stack is near 0x5f000000
@@ -508,8 +509,8 @@ void process_schedule(void) {
         arch_context_get_sp(&kernel_context) < 0x40000000) {
       printf("[PROC] WARNING: kernel_context corrupted after process ran!\n");
       printf("[PROC] pc=0x%llx sp=0x%llx\n",
-             (unsigned long long)arch_context_get_pc(&kernel_context),
-             (unsigned long long)arch_context_get_sp(&kernel_context));
+             (uint64_t)arch_context_get_pc(&kernel_context),
+             (uint64_t)arch_context_get_sp(&kernel_context));
     }
   }
 
