@@ -10,7 +10,23 @@
 #include "printk.h"
 #include <string.h>
 
-/* Global process manager */
+/* ===================================================================== */
+/* Missing Declarations */
+/* ===================================================================== */
+
+/* Memory functions */
+void kfree_pages(void *addr, unsigned int pages);
+void *kmalloc_aligned(size_t size, size_t alignment);
+
+/* Time function */
+uint64_t get_time_ns(void);
+
+/* Page size */
+#define PAGE_SIZE 4096
+
+/* ===================================================================== */
+/* Global Process Manager */
+/* ===================================================================== */
 struct process_manager g_process_manager;
 
 /* Idle process function */

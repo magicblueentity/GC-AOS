@@ -12,6 +12,13 @@
 #include "types.h"
 
 /* ===================================================================== */
+/* Forward Declarations */
+/* ===================================================================== */
+
+struct task_struct_ext;
+struct rq_ext;
+
+/* ===================================================================== */
 /* Fairness Scheduler Configuration */
 /* ===================================================================== */
 
@@ -73,6 +80,21 @@ struct task_fairness {
     bool starving;                  /* Task is starving */
     bool boosted;                   /* Task has been boosted */
     bool migrated;                   /* Task has been migrated */
+};
+
+/* ===================================================================== */
+/* Basic Structure Definitions */
+/* ===================================================================== */
+
+struct rq_ext {
+    /* Basic run queue extension */
+    int cpu;
+    unsigned long nr_running;
+};
+
+struct workqueue_struct {
+    const char *name;
+    void *tasks;
 };
 
 /* ===================================================================== */

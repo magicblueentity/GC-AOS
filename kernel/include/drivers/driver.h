@@ -9,6 +9,20 @@
 #define _DRIVERS_DRIVER_H
 
 #include "types.h"
+#include "kernel/list.h"
+#include "kernel/spinlock.h"
+
+/* ===================================================================== */
+/* Forward Declarations */
+/* ===================================================================== */
+
+struct list_head;
+struct file;
+struct iovec;
+struct poll_table_struct;
+
+/* Resource size type */
+typedef unsigned long long resource_size_t;
 #include "kernel/module.h"
 
 /* ===================================================================== */

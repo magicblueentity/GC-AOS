@@ -513,8 +513,7 @@ static void init_subsystems(void *dtb) {
  * start_init_process - Start the first userspace process (PID 1)
  */
 
-/* Global terminal pointer for keyboard callback */
-static void *g_active_terminal = 0;
+/* Global terminal pointer for keyboard callback - TODO: Implement when needed */
 static volatile int g_gui_redraw_requested = 0;
 
 /* Keyboard callback wrapper */

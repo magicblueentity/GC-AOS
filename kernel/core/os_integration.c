@@ -9,8 +9,55 @@
 #include "gui/compositor.h"
 #include "gui/app_framework.h"
 #include "kernel/event_system.h"
-#include "drivers/display.h"
 #include "printk.h"
+
+/* ===================================================================== */
+/* Missing Declarations */
+/* ===================================================================== */
+
+/* Scheduler functions */
+void scheduler_init(void);
+void scheduler_reschedule(void);
+void scheduler_yield(void);
+void scheduler_tick(void);
+
+/* Memory functions */
+void *kmalloc_aligned(size_t size, size_t alignment);
+
+/* Time function */
+uint64_t get_time_ns(void);
+
+/* Display structures */
+struct display_info {
+    uint32_t width;
+    uint32_t height;
+    uint32_t bpp;
+    uint32_t pitch;
+    void *framebuffer;
+};
+
+struct display_drv {
+    int (*get_info)(struct display_info *info);
+    void *framebuffer;
+};
+
+extern struct display_drv *g_display;
+
+/* Runqueue structure */
+struct runqueue {
+    void *current;
+    int nr_running;
+};
+
+typedef struct runqueue runqueue_t;
+extern runqueue_t g_runqueue;
+
+/* Page size */
+#define PAGE_SIZE 4096
+
+/* ===================================================================== */
+/* Subsystem Status */
+/* ===================================================================== */
 
 /* Subsystem status flags */
 #define SUBSYSTEM_PROCESS       (1 << 0)
@@ -32,7 +79,7 @@ int modern_os_init(void)
     int ret;
     
     printk(KERN_INFO "========================================\n");
-    printk(KERN_INFO "GC-AOS Modern OS Initialization\n");
+    printk(KERN_INFO "GC-AOS Initialization\n");
     printk(KERN_INFO "========================================\n");
     
     /* Initialize system services (this initializes most subsystems) */
@@ -62,7 +109,6 @@ int modern_os_init(void)
     void *framebuffer = NULL;
     
     /* Try to get actual display info */
-    extern struct display_drv *g_display;
     if (g_display && g_display->get_info) {
         struct display_info info;
         if (g_display->get_info(&info) == 0) {
@@ -112,7 +158,7 @@ int modern_os_init(void)
     /* compositor_run(); -- would start compositor as separate entity */
     
     printk(KERN_INFO "========================================\n");
-    printk(KERN_INFO "Modern OS initialization complete!\n");
+    printk(KERN_INFO "OS initialization complete!\n");
     printk(KERN_INFO "========================================\n");
     
     return 0;
@@ -124,7 +170,7 @@ int modern_os_init(void)
 
 void modern_os_shutdown(void)
 {
-    printk(KERN_INFO "SHUTDOWN: Stopping modern OS subsystems...\n");
+    printk(KERN_INFO "SHUTDOWN: Stopping OS subsystems...\n");
     
     /* Stop app framework (gracefully close apps) */
     if (g_subsystem_status & SUBSYSTEM_APP) {
@@ -150,7 +196,7 @@ void modern_os_shutdown(void)
         services_shutdown();
     }
     
-    printk(KERN_INFO "SHUTDOWN: Modern OS subsystems stopped\n");
+    printk(KERN_INFO "SHUTDOWN: OS subsystems stopped\n");
 }
 
 /* ===================================================================== */
@@ -159,7 +205,7 @@ void modern_os_shutdown(void)
 
 void modern_os_main_loop(void)
 {
-    printk(KERN_INFO "MAIN: Entering modern OS main loop\n");
+    printk(KERN_INFO "MAIN: Entering OS main loop\n");
     
     uint64_t frame_count = 0;
     uint64_t last_fps_time = get_time_ns();
@@ -228,7 +274,6 @@ int modern_os_validate(void)
     
     /* Check scheduler */
     if (g_subsystem_status & SUBSYSTEM_SCHEDULER) {
-        extern runqueue_t g_runqueue;
         if (!g_runqueue.current) {
             printk(KERN_ERR "VALIDATE: Scheduler not operational\n");
             failed |= SUBSYSTEM_SCHEDULER;

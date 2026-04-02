@@ -157,7 +157,11 @@ KERNEL_OBJECTS += $(patsubst $(KERNEL_DIR)/%.S,$(BUILD_DIR)/kernel/%.o,$(filter 
 DRIVER_SOURCES := $(shell find $(DRIVERS_DIR) -name '*.c' 2>/dev/null)
 DRIVER_OBJECTS := $(patsubst $(DRIVERS_DIR)/%.c,$(BUILD_DIR)/drivers/%.o,$(DRIVER_SOURCES))
 
-ALL_KERNEL_OBJECTS := $(KERNEL_OBJECTS) $(DRIVER_OBJECTS)
+# Include new kernel subsystem components
+KERNEL_SUBSYSTEM_SOURCES := $(shell find $(KERNEL_DIR) -name '*.c' -path '*/core/*' -o -path '*/sched/*' -o -path '*/drivers/*' -o -path '*/mm/*' 2>/dev/null)
+KERNEL_SUBSYSTEM_OBJECTS := $(patsubst $(KERNEL_DIR)/%.c,$(BUILD_DIR)/kernel/%.o,$(KERNEL_SUBSYSTEM_SOURCES))
+
+ALL_KERNEL_OBJECTS := $(KERNEL_OBJECTS) $(DRIVER_OBJECTS) $(KERNEL_SUBSYSTEM_OBJECTS)
 KERNEL_BINARY := $(BUILD_DIR)/kernel/gc-aos.elf
 
 kernel: $(BUILD_DIR) $(ALL_KERNEL_OBJECTS) $(KERNEL_BINARY)

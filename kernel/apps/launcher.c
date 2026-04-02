@@ -110,6 +110,8 @@ static void kapi_mouse_get_delta(int *dx, int *dy) {
 extern int intel_hda_play_pcm(const void *data, uint32_t samples, uint8_t channels, uint32_t sample_rate);
 
 static int kapi_sound_play_wav(const void *data, uint32_t size) {
+    (void)data;    /* Suppress unused parameter warning */
+    (void)size;     /* Suppress unused parameter warning */
     /* TODO: Parse WAV header */
     return 0; 
 }

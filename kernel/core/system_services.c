@@ -12,7 +12,19 @@
 #include "printk.h"
 #include <string.h>
 
-/* Global services */
+/* ===================================================================== */
+/* Missing Declarations */
+/* ===================================================================== */
+
+/* Time function */
+uint64_t get_time_ns(void);
+
+/* Memory function */
+void *kmalloc_aligned(size_t size, size_t alignment);
+
+/* ===================================================================== */
+/* Global Services */
+/* ===================================================================== */
 services_manager_t g_services;
 system_api_t g_system_api;
 
@@ -294,7 +306,7 @@ static void svc_input_release_capture(int window_id)
 
 /* ===================================================================== */
 /* Filesystem Service Implementation (Stub) */
- * ===================================================================== */
+/* ===================================================================== */
 
 static int svc_fs_open(const char *path, int flags)
 {
@@ -382,7 +394,7 @@ static int svc_fs_closedir(int dirfd)
 
 /* ===================================================================== */
 /* Event Service Implementation */
- * ===================================================================== */
+/* ===================================================================== */
 
 static int svc_event_post_keyboard(int type, int keycode, int scancode, 
                                    uint32_t modifiers, char character)
@@ -428,7 +440,7 @@ static int svc_event_unregister_handler(int handler_id)
 
 /* ===================================================================== */
 /* Time Service Implementation */
- * ===================================================================== */
+/* ===================================================================== */
 
 static uint64_t svc_time_get_time_ns(void)
 {
@@ -449,7 +461,7 @@ static void svc_time_delay_ns(uint64_t nanoseconds)
 {
     uint64_t target = get_time_ns() + nanoseconds;
     while (get_time_ns() < target) {
-        __asm__ volatile("pause");
+        __asm__ volatile("yield");  /* ARM64 yield instruction */
     }
 }
 
@@ -473,7 +485,7 @@ static void svc_time_destroy_timer(int timer_id)
 
 /* ===================================================================== */
 /* Memory Service Implementation */
- * ===================================================================== */
+/* ===================================================================== */
 
 static void *svc_mem_malloc(size_t size)
 {
@@ -523,7 +535,7 @@ static size_t svc_mem_get_total(void)
 
 /* ===================================================================== */
 /* Service Registration */
- * ===================================================================== */
+/* ===================================================================== */
 
 static void register_service(service_id_t id, const char *name,
                             int (*init)(void), int (*shutdown)(void),
@@ -616,7 +628,7 @@ static int memory_service_health(void) { return 0; }
 
 /* ===================================================================== */
 /* Services Manager */
- * ===================================================================== */
+/* ===================================================================== */
 
 int services_init(void)
 {
@@ -717,7 +729,7 @@ int services_is_ready(service_id_t id)
 
 /* ===================================================================== */
 /* System API */
- * ===================================================================== */
+/* ===================================================================== */
 
 void system_init_api(void)
 {

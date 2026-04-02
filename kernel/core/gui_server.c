@@ -636,6 +636,8 @@ void gui_server_handle_key_event(uint32_t keycode, uint32_t scancode, bool press
 void gui_server_handle_mouse_event(int32_t x, int32_t y, uint32_t buttons,
                                    int32_t dx, int32_t dy, int32_t wheel)
 {
+    (void)wheel;  /* Suppress unused parameter warning */
+    
     if (!gui_server.initialized) {
         return;
     }

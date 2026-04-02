@@ -8,6 +8,28 @@
 #include "printk.h"
 #include <string.h>
 
+/* ===================================================================== */
+/* Missing Symbol Declarations */
+/* ===================================================================== */
+
+/* Timer function */
+uint64_t get_time_ns(void)
+{
+    /* Simple timestamp implementation */
+    static uint64_t counter = 0;
+    return ++counter * 1000000; /* Return nanoseconds */
+}
+
+/* Key constants */
+#define KEY_ESCAPE     27
+#define KEY_ENTER      13
+#define KEY_SPACE      ' '
+#define KEY_BACKSPACE  8
+
+/* ===================================================================== */
+/* Global Event System */
+/* ===================================================================== */
+
 /* Global event system */
 struct event_system g_event_system;
 

@@ -8,9 +8,30 @@
 #ifndef _DRIVERS_LIFECYCLE_H
 #define _DRIVERS_LIFECYCLE_H
 
-#include "drivers/driver.h"
-#include "kernel/module.h"
 #include "types.h"
+#include "kernel/list.h"
+
+/* ===================================================================== */
+/* Forward Declarations */
+/* ===================================================================== */
+
+struct driver;
+struct device;
+struct driver_refcount;
+
+/* ===================================================================== */
+/* Spinlock Definition */
+/* ===================================================================== */
+
+typedef struct {
+    volatile int raw_lock;
+} spinlock_t;
+
+/* ===================================================================== */
+/* Constants */
+/* ===================================================================== */
+
+#define SPIN_LOCK_UNLOCKED { 0 }
 
 /* ===================================================================== */
 /* Driver Lifecycle States */
